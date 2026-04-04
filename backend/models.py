@@ -1,0 +1,48 @@
+from typing import Optional, List, Any
+from sqlmodel import Field, SQLModel, Relationship, JSON
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(index=True, unique=True)
+    google_id: str = Field(index=True, unique=True)
+    trefle_token: Optional[str] = None
+    openrouter_key: Optional[str] = None
+    openrouter_model: Optional[str] = Field(default="google/gemini-2.0-flash-lite-preview-02-05:free")
+    
+    gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+class Garden(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    location: Optional[str] = None
+    
+    user_id: int = Field(foreign_key="user.id")
+    user: User = Relationship(back_populates="gardens")
+    plants: List["Plant"] = Relationship(back_populates="garden", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+class Plant(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    common_name: Optional[str] = None
+    scientific_name: Optional[str] = None
+    trefle_id: Optional[int] = None
+    location_in_garden: Optional[str] = None
+    image_path: Optional[str] = None
+    image_url: Optional[str] = None # Original Trefle URL
+    remarks: Optional[str] = None # Opmerkingen
+    flowering_months: Optional[str] = None # e.g. "4,5,6"
+    pruning_months: Optional[str] = None # e.g. "3,10"
+    raw_data: Optional[dict] = Field(default=None, sa_type=JSON) # Store all Trefle data
+    
+    garden_id: int = Field(foreign_key="garden.id")
+    garden: Garden = Relationship(back_populates="plants")
+    tasks: List["Task"] = Relationship(back_populates="plant", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+class Task(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    month: int # 1-12
+    category: str # Pruning, Flowering, Planting, etc.
+    description: str
+    is_user_override: bool = Field(default=False)
+    
+    plant_id: int = Field(foreign_key="plant.id")
+    plant: Plant = Relationship(back_populates="tasks")
