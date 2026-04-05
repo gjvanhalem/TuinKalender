@@ -20,7 +20,10 @@ app = FastAPI(title="TuinKalender API")
 # Define allowed origins based on environment variable
 origins = [
     os.getenv("NEXTAUTH_URL", "http://localhost:3000"),
+    os.getenv("NEXT_PUBLIC_API_URL"),
 ]
+# Filter out None values
+origins = [o for o in origins if o]
 
 app.add_middleware(
     CORSMiddleware,
