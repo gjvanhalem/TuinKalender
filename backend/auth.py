@@ -24,8 +24,8 @@ async def get_current_user(
         google_id = None
 
         if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID != "jouw-google-client-id":
-            # Verify with a 1-minute clock skew to handle small timing differences
-            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID, clock_skew=60)
+            # Verify the token without explicit clock skew to avoid library errors
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
             email = idinfo['email']
             google_id = idinfo['sub']
         else:
