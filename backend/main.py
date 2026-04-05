@@ -38,7 +38,7 @@ for o in raw_origins:
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=".*", # Temporarily allow any origin (required for debugging with credentials)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
