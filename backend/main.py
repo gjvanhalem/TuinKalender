@@ -51,6 +51,9 @@ def update_user_me(user_data: User, current_user: User = Depends(get_current_use
     db_user.trefle_token = user_data.trefle_token
     db_user.openrouter_key = user_data.openrouter_key
     db_user.openrouter_model = user_data.openrouter_model
+    db_user.openai_key = user_data.openai_key
+    db_user.openai_model = user_data.openai_model
+    db_user.ai_provider = user_data.ai_provider
     
     session.add(db_user)
     session.commit()
@@ -404,10 +407,20 @@ def search_trefle_plants(query: str, current_user: User = Depends(get_current_us
 
 @app.get("/ai-suggest/")
 def get_ai_suggestions(common_name: str, scientific_name: str, current_user: User = Depends(get_current_user)):
-    if not current_user.openrouter_key:
-        raise HTTPException(status_code=400, detail="OpenRouter API key not configured in settings")
-    model = current_user.openrouter_model or "openrouter/auto"
-    return get_plant_suggestions_ai(common_name, scientific_name, current_user.openrouter_key, model)
+    provider = current_user.ai_provider or "openrouter"
+    
+    if provider == "openai":
+        if not current_user.openai_key:
+            raise HTTPException(status_code=400, detail="OpenAI API key not configured in settings")
+        api_key = current_user.openai_key
+        model = current_user.openai_model or "gpt-4o-mini"
+    else:
+        if not current_user.openrouter_key:
+            raise HTTPException(status_code=400, detail="OpenRouter API key not configured in settings")
+        api_key = current_user.openrouter_key
+        model = current_user.openrouter_model or "openrouter/auto"
+        
+    return get_plant_suggestions_ai(common_name, scientific_name, api_key, model, provider)
 
 def sync_plant_tasks(plant: Plant, session: Session):
     """

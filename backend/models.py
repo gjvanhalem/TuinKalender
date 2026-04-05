@@ -17,6 +17,9 @@ class User(SQLModel, table=True):
     trefle_token: Optional[str] = None
     openrouter_key: Optional[str] = None
     openrouter_model: Optional[str] = Field(default=DEFAULT_MODEL)
+    openai_key: Optional[str] = None
+    openai_model: Optional[str] = Field(default="gpt-4o-mini")
+    ai_provider: str = Field(default="openrouter") # "openrouter" or "openai"
     
     gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shared_gardens: List["Garden"] = Relationship(back_populates="shared_users", link_model=GardenAccess)

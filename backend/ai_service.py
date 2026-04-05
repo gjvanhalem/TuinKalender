@@ -3,9 +3,9 @@ import json
 import requests
 from typing import Dict, Optional
 
-def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: str, model: str = "openrouter/auto") -> Dict:
+def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: str, model: str = "openrouter/auto", provider: str = "openrouter") -> Dict:
     """
-    Use OpenRouter AI to get suggestions for flowering, pruning and remarks.
+    Use AI (OpenRouter or OpenAI) to get suggestions for flowering, pruning and remarks.
     """
     if not api_key:
         return {}
@@ -35,14 +35,24 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
     """
 
     try:
-        response = requests.post(
-            url="https://openrouter.ai/api/v1/chat/completions",
-            headers={
+        if provider == "openai":
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+        else:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:3000", 
                 "X-Title": "TuinKalender",
-            },
+            }
+
+        response = requests.post(
+            url=url,
+            headers=headers,
             data=json.dumps({
                 "model": model, 
                 "messages": [
@@ -51,11 +61,11 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
             })
         )
         if response.status_code != 200:
-            print(f"OpenRouter Error Details: {response.text}")
+            print(f"{provider.capitalize()} Error Details: {response.text}")
         response.raise_for_status()
         result = response.json()
         if 'choices' not in result or len(result['choices']) == 0:
-            print(f"OpenRouter No Choices: {result}")
+            print(f"{provider.capitalize()} No Choices: {result}")
             return {}
             
         content = result['choices'][0]['message']['content']
@@ -68,5 +78,5 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
             
         return json.loads(content)
     except Exception as e:
-        print(f"OpenRouter AI Error: {e}")
+        print(f"{provider.capitalize()} AI Error: {e}")
         return {}

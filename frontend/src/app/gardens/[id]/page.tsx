@@ -505,28 +505,28 @@ export default function GardenPlantsPage() {
             <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 animate-in fade-in slide-in-from-left-4">
               <h2 className="text-2xl font-black text-slate-900 mb-6">{editingPlantId ? "Plant Bewerken" : "Plantgegevens"}</h2>
               
-              {!editingPlantId && !userSettings?.openrouter_key && (
+              {!editingPlantId && !userSettings?.openrouter_key && !userSettings?.openai_key && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
                   <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
                   <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
-                    Voeg een <strong>OpenRouter API Key</strong> toe bij instellingen om deze plant automatisch te laten analyseren door AI voor bloei- en snoeiadvies.
+                    Voeg een <strong>AI API Key</strong> toe bij instellingen om deze plant automatisch te laten analyseren door AI voor bloei- en snoeiadvies.
                   </p>
                 </div>
               )}
 
-              {!editingPlantId && (selectedPlant.common_name || selectedPlant.scientific_name) && userSettings?.openrouter_key && (
+              {!editingPlantId && (selectedPlant.common_name || selectedPlant.scientific_name) && (userSettings?.openrouter_key || userSettings?.openai_key) && (
                 <button
                   type="button"
                   onClick={getAiSuggestions}
                   disabled={isAiLoading}
-                  className="w-full mb-6 py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-50"
+                  className={`w-full mb-6 py-3 px-4 bg-gradient-to-r ${userSettings?.ai_provider === 'openai' ? 'from-green-600 to-emerald-600' : 'from-blue-600 to-indigo-600'} text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-50`}
                 >
                   {isAiLoading ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                   ) : (
                     <Sparkles className="w-5 h-5" />
                   )}
-                  {isAiLoading ? "AI is aan het denken..." : "Vul aan met AI (OpenRouter)"}
+                  {isAiLoading ? "AI is aan het denken..." : `Vul aan met AI (${userSettings?.ai_provider === 'openai' ? 'OpenAI' : 'OpenRouter'})`}
                 </button>
               )}
 
