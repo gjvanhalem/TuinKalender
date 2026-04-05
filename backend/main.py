@@ -36,9 +36,31 @@ for o in raw_origins:
         if clean_origin and clean_origin not in origins:
             origins.append(clean_origin)
 
+# Build a regex that allows any subdomain of the domains in the origins list
+import re
+origin_patterns = []
+for origin in origins:
+    # Escape dots for regex and replace the sub-part with a wildcard
+    # e.g., http://tuin.mijndomein.nl -> http://.*\.mijndomein\.nl
+    # If it's localhost, keep it as is
+    if "localhost" in origin or re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", origin.split("//")[-1]):
+        origin_patterns.append(re.escape(origin))
+    else:
+        # Extract base domain: split by dots and take the last two parts (e.g., domein.nl)
+        parts = origin.split("//")[-1].split(".")
+        if len(parts) >= 2:
+            base_domain = ".".join(parts[-2:])
+            protocol = origin.split("://")[0]
+            origin_patterns.append(f"{protocol}://.*\\.{re.escape(base_domain)}")
+        else:
+            origin_patterns.append(re.escape(origin))
+
+# Join all patterns into one regex
+origin_regex = f"^({'|'.join(origin_patterns)})(:\\d+)?$" if origin_patterns else None
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=".*", # Temporarily allow any origin (required for debugging with credentials)
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
