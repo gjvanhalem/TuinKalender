@@ -91,7 +91,6 @@ export default function GardenPlantsPage() {
       if (response.ok) {
         const data = await response.json();
         setUserSettings(data);
-        if (!data.trefle_token) router.push("/settings");
       }
     } catch (error) {}
   };
@@ -433,6 +432,15 @@ export default function GardenPlantsPage() {
             <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 animate-in fade-in slide-in-from-left-4">
               <h2 className="text-2xl font-black text-slate-900 mb-6">{editingPlantId ? "Plant Bewerken" : "Plantgegevens"}</h2>
               
+              {!editingPlantId && !userSettings?.openrouter_key && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
+                  <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
+                    Voeg een <strong>OpenRouter API Key</strong> toe bij instellingen om deze plant automatisch te laten analyseren door AI voor bloei- en snoeiadvies.
+                  </p>
+                </div>
+              )}
+
               {!editingPlantId && (selectedPlant.common_name || selectedPlant.scientific_name) && userSettings?.openrouter_key && (
                 <button
                   type="button"
@@ -479,18 +487,17 @@ export default function GardenPlantsPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Nederlandse Naam</label>
-                  <input
-                    type="text"
-                    placeholder="Echte Lavendel"
-                    className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                    value={selectedPlant.common_name || ""}
-                    onChange={(e) => setSelectedPlant({ ...selectedPlant, common_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Wetenschappelijke Naam</label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Wetenschappelijke Naam</label>
+                    {!userSettings?.trefle_token && (
+                      <div className="group relative">
+                        <Info className="w-3 h-3 text-slate-300 cursor-help" />
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl z-50">
+                          Voeg een Trefle API token toe bij instellingen om automatisch plantgegevens te zoeken.
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex gap-2">
                     <input
                       type="text"
@@ -503,14 +510,26 @@ export default function GardenPlantsPage() {
                       <button
                         type="button"
                         onClick={handleSearch}
-                        disabled={isSearching || (!selectedPlant.scientific_name && !selectedPlant.common_name)}
+                        disabled={isSearching || (!selectedPlant.scientific_name && !selectedPlant.common_name) || !userSettings?.trefle_token}
                         className="bg-garden-green-100 text-garden-green-600 p-3 rounded-xl hover:bg-garden-green-200 transition-all disabled:opacity-30"
-                        title="Zoek gegevens in Trefle"
+                        title={userSettings?.trefle_token ? "Zoek gegevens in Trefle" : "Voeg eerst een Trefle token toe bij instellingen"}
                       >
                         {isSearching ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-garden-green-600"></div> : <Search className="w-5 h-5" />}
                       </button>
                     )}
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Nederlandse Naam</label>
+                  <input
+                    type="text"
+                    placeholder="Echte Lavendel"
+                    className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                    value={selectedPlant.common_name || ""}
+                    onChange={(e) => setSelectedPlant({ ...selectedPlant, common_name: e.target.value })}
+                    required
+                  />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Locatie in Tuin</label>

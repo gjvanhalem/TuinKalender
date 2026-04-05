@@ -18,6 +18,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      DEFAULT_OPENROUTER_MODEL: ${DEFAULT_OPENROUTER_MODEL}
     volumes:
       - ./backend:/app
       - plant_images:/app/images
@@ -39,6 +40,7 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
+      NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL: ${NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL}
     volumes:
       - ./frontend:/app
       - /app/node_modules

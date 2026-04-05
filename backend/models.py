@@ -1,5 +1,8 @@
+import os
 from typing import Optional, List, Any
 from sqlmodel import Field, SQLModel, Relationship, JSON
+
+DEFAULT_MODEL = os.getenv("DEFAULT_OPENROUTER_MODEL", "google/gemini-2.0-flash-lite-preview-02-05:free")
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -9,7 +12,7 @@ class User(SQLModel, table=True):
     is_admin: bool = Field(default=False)
     trefle_token: Optional[str] = None
     openrouter_key: Optional[str] = None
-    openrouter_model: Optional[str] = Field(default="google/gemini-2.0-flash-lite-preview-02-05:free")
+    openrouter_model: Optional[str] = Field(default=DEFAULT_MODEL)
     
     gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 

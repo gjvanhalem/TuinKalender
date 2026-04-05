@@ -5,12 +5,13 @@ import { useSession } from "next-auth/react";
 import { Settings, Key, Save, AlertTriangle, CheckCircle2, MapPin, Sparkles, ChevronDown } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL || "google/gemini-2.0-flash-lite-preview-02-05:free";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
   const [trefleToken, setTrefleToken] = useState("");
   const [openrouterKey, setOpenrouterKey] = useState("");
-  const [openrouterModel, setOpenrouterModel] = useState("nvidia/nemotron-3-super-120b-a12b:free");
+  const [openrouterModel, setOpenrouterModel] = useState(DEFAULT_MODEL);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -29,7 +30,7 @@ export default function SettingsPage() {
         const data = await response.json();
         setTrefleToken(data.trefle_token || "");
         setOpenrouterKey(data.openrouter_key || "");
-        setOpenrouterModel(data.openrouter_model || "google/gemini-2.0-flash-lite-preview-02-05:free");
+        setOpenrouterModel(data.openrouter_model || DEFAULT_MODEL);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -96,7 +97,7 @@ export default function SettingsPage() {
                 <Key className="w-4 h-4 text-garden-green-600" />
                 Trefle.io API Token
               </label>
-              <span className="text-[10px] bg-red-50 text-red-500 px-2 py-0.5 rounded-full font-bold uppercase">Verplicht</span>
+              <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold uppercase">Optioneel</span>
             </div>
             <input
               type="password"
@@ -104,7 +105,6 @@ export default function SettingsPage() {
               className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-garden-green-500 transition-all font-mono text-sm"
               value={trefleToken}
               onChange={(e) => setTrefleToken(e.target.value)}
-              required
             />
             <p className="text-xs text-slate-400">Vraag uw token aan op <a href="https://trefle.io/" target="_blank" className="text-garden-green-600 underline">trefle.io</a></p>
           </div>
@@ -135,7 +135,7 @@ export default function SettingsPage() {
             <div className="relative group">
               <input
                 type="text"
-                placeholder="bijv: google/gemini-2.0-flash-lite-preview-02-05:free"
+                placeholder={`bijv: ${DEFAULT_MODEL}`}
                 className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
                 value={openrouterModel}
                 onChange={(e) => setOpenrouterModel(e.target.value)}

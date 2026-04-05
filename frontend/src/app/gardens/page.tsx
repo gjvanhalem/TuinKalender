@@ -54,7 +54,6 @@ export default function GardensPage() {
       if (response.ok) {
         const data = await response.json();
         setUserSettings(data);
-        if (!data.trefle_token) router.push("/settings");
       }
     } catch (error) {}
   };
