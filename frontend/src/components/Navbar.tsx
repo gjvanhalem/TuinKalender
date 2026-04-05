@@ -1,11 +1,46 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
-import { Leaf, Map, Calendar, Settings, LogIn, LogOut } from "lucide-react";
+import { Leaf, Map, Calendar, Settings, LogIn, LogOut, Shield } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      checkUserStatus();
+    } else {
+      setIsAdmin(false);
+      setIsAuthorized(false);
+    }
+  }, [session]);
+
+  const checkUserStatus = async () => {
+    try {
+      const response = await fetch(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+      });
+      
+      if (response.status === 403) {
+        signOut({ callbackUrl: "/?error=unauthorized" });
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsAdmin(data.is_admin);
+        setIsAuthorized(true);
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-garden-green-100 shadow-sm flex justify-between items-center px-6 py-4">
@@ -17,7 +52,7 @@ export default function Navbar() {
       </Link>
       
       <div className="flex gap-8 items-center font-semibold text-slate-600">
-        {session ? (
+        {session && isAuthorized ? (
           <>
             <Link href="/gardens" className="hover:text-garden-green-600 transition-colors flex items-center gap-2">
               <Map className="w-5 h-5" />
@@ -27,6 +62,12 @@ export default function Navbar() {
               <Calendar className="w-5 h-5" />
               <span className="hidden md:inline">Kalender</span>
             </Link>
+            {isAdmin && (
+              <Link href="/admin" className="hover:text-garden-green-600 transition-colors flex items-center gap-2 text-amber-600">
+                <Shield className="w-5 h-5" />
+                <span className="hidden md:inline">Beheer</span>
+              </Link>
+            )}
             <Link href="/settings" className="hover:text-garden-green-600 transition-colors flex items-center gap-2" title="Instellingen">
               <Settings className="w-5 h-5" />
             </Link>
@@ -38,7 +79,7 @@ export default function Navbar() {
               </button>
             </div>
           </>
-        ) : (
+        ) : !session ? (
           <button 
             onClick={() => signIn('google')} 
             className="bg-garden-green-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-garden-green-700 transition-all"
@@ -46,6 +87,8 @@ export default function Navbar() {
             <LogIn className="w-5 h-5" />
             Inloggen met Google
           </button>
+        ) : (
+          <div className="text-sm text-slate-400 animate-pulse">Controleren...</div>
         )}
       </div>
     </nav>

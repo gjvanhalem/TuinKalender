@@ -4,7 +4,9 @@ from sqlmodel import Field, SQLModel, Relationship, JSON
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
-    google_id: str = Field(index=True, unique=True)
+    google_id: Optional[str] = Field(default=None, index=True, unique=True)
+    is_active: bool = Field(default=True)
+    is_admin: bool = Field(default=False)
     trefle_token: Optional[str] = None
     openrouter_key: Optional[str] = None
     openrouter_model: Optional[str] = Field(default="google/gemini-2.0-flash-lite-preview-02-05:free")

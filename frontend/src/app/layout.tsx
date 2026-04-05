@@ -4,6 +4,7 @@ import "./globals.css";
 import { Providers } from "@/components/Providers";
 import Navbar from "@/components/Navbar";
 import { Leaf } from "lucide-react";
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -23,7 +24,9 @@ export default function RootLayout({
         <Providers>
           <Navbar />
           <div className="min-h-screen pb-20">
-            {children}
+            <Suspense fallback={null}>
+              {children}
+            </Suspense>
           </div>
           <footer className="bg-slate-900 text-slate-400 py-12 text-center">
             <div className="container mx-auto px-6">

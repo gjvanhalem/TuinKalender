@@ -3,9 +3,12 @@
 import { Leaf, Plus, Search, Calendar, Map, ArrowRight, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 
 export default function Home() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
 
   return (
     <main className="flex min-h-screen flex-col overflow-hidden">
@@ -17,6 +20,13 @@ export default function Home() {
         </div>
 
         <div className="container mx-auto relative z-10 text-center">
+          {error === 'unauthorized' && (
+            <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/20 backdrop-blur-md border border-red-500/50 rounded-2xl text-red-200 font-bold flex items-center justify-center gap-2 animate-bounce">
+              <LogIn className="w-5 h-5" />
+              Toegang geweigerd. U bent (nog) niet uitgenodigd.
+            </div>
+          )}
+
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium mb-8">
             <Leaf className="w-4 h-4 text-garden-green-400" />
             Geef je tuin kracht

@@ -2,7 +2,9 @@ import os
 from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import SQLModel, Session, create_engine, select
+from sqlmodel import SQLModel, Session, select
+from database import engine, create_db_and_tables, get_session
+from sqlalchemy import func
 from models import Garden, Plant, Task, User
 from trefle_api import search_plants, get_plant_details, extract_tasks_from_trefle_data, download_image
 from ai_service import get_plant_suggestions_ai
@@ -12,16 +14,6 @@ from fastapi.staticfiles import StaticFiles
 import shutil
 
 load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
-
-def create_db_and_tables():
-    SQLModel.metadata.create_all(engine)
-
-def get_session():
-    with Session(engine) as session:
-        yield session
 
 app = FastAPI(title="TuinKalender API")
 
@@ -64,6 +56,62 @@ def update_user_me(user_data: User, current_user: User = Depends(get_current_use
     session.commit()
     session.refresh(db_user)
     return db_user
+
+# Admin Endpoints
+@app.get("/admin/users", response_model=List[dict])
+def admin_get_users(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Alleen voor administrators")
+    
+    users = session.exec(select(User)).all()
+    result = []
+    for u in users:
+        # Calculate stats for this user
+        g_count = session.exec(select(func.count(Garden.id)).where(Garden.user_id == u.id)).one()
+        p_count = session.exec(select(func.count(Plant.id)).join(Garden).where(Garden.user_id == u.id)).one()
+        
+        u_data = u.model_dump()
+        u_data["garden_count"] = g_count
+        u_data["plant_count"] = p_count
+        result.append(u_data)
+    return result
+
+@app.post("/admin/users/invite")
+def admin_invite_user(user_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Alleen voor administrators")
+    
+    email = user_data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="E-mailadres is verplicht")
+    
+    # Check if user already exists
+    existing = session.exec(select(User).where(User.email == email)).first()
+    if existing:
+        return {"message": "Gebruiker bestaat al"}
+    
+    new_user = User(email=email, is_active=True, is_admin=False)
+    session.add(new_user)
+    session.commit()
+    return {"message": f"Gebruiker {email} toegevoegd aan de toegangslijst."}
+
+@app.patch("/admin/users/{user_id}")
+def admin_update_user(user_id: int, data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Alleen voor administrators")
+        
+    db_user = session.get(User, user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden")
+        
+    if "is_active" in data:
+        db_user.is_active = data["is_active"]
+    if "is_admin" in data:
+        db_user.is_admin = data["is_admin"]
+        
+    session.add(db_user)
+    session.commit()
+    return {"message": "Gebruiker bijgewerkt"}
 
 # Garden Endpoints
 @app.post("/gardens/", response_model=Garden)
