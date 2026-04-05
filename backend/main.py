@@ -1,4 +1,6 @@
-import os
+from dotenv import load_dotenv
+load_dotenv()
+
 from typing import List, Optional
 from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,19 +11,22 @@ from models import Garden, Plant, Task, User, GardenAccess
 from trefle_api import search_plants, get_plant_details, extract_tasks_from_trefle_data, download_image
 from ai_service import get_plant_suggestions_ai
 from auth import get_current_user
-from dotenv import load_dotenv
 from fastapi.staticfiles import StaticFiles
 import shutil
-
-load_dotenv()
+import os
 
 app = FastAPI(title="TuinKalender API")
 
+# Define allowed origins based on environment variable
+origins = [
+    os.getenv("NEXTAUTH_URL", "http://localhost:3000"),
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
 )
 

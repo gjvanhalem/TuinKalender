@@ -10,10 +10,18 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
     if not api_key:
         return {}
 
+    # Basic input cleaning to prevent simple prompt injection
+    def clean(text):
+        if not text: return ""
+        return text.replace('"', '').replace("'", "").replace("\n", " ").strip()[:100]
+
+    safe_common = clean(common_name)
+    safe_scientific = clean(scientific_name)
+
     prompt = f"""
     Geef tuinieradvies voor de volgende plant in het Nederlands:
-    Naam: {common_name}
-    Wetenschappelijke naam: {scientific_name}
+    Naam: {safe_common}
+    Wetenschappelijke naam: {safe_scientific}
 
     Geef de respons strikt in JSON formaat met de volgende velden:
     - dutch_name: de meest gangbare Nederlandse naam voor deze plant

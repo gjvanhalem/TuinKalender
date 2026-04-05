@@ -7,6 +7,9 @@ from google.auth.transport import requests as google_requests
 from sqlmodel import Session, select, func
 from models import User
 from database import get_session
+from dotenv import load_dotenv
+
+load_dotenv()
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 security = HTTPBearer()
@@ -21,27 +24,12 @@ async def get_current_user(
         google_id = None
 
         if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_ID != "jouw-google-client-id":
-            try:
-                # Verify with a 1-minute clock skew to handle small timing differences
-                idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID, clock_skew=60)
-                email = idinfo['email']
-                google_id = idinfo['sub']
-            except Exception as e:
-                # If verification fails (e.g. expired), try to decode manually to get the email
-                # This is acceptable for a home server app where we trust the frontend proxy
-                try:
-                    decoded = jwt.decode(token, options={"verify_signature": False})
-                    email = decoded.get('email')
-                    google_id = decoded.get('sub')
-                except:
-                    if "@" in token:
-                        email = token
-                        google_id = token
-                    else:
-                        raise e
+            # Verify with a 1-minute clock skew to handle small timing differences
+            idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID, clock_skew_in_seconds=60)
+            email = idinfo['email']
+            google_id = idinfo['sub']
         else:
-            email = token
-            google_id = token
+            raise HTTPException(status_code=500, detail="Google Client ID not configured on backend")
 
         if not email:
             raise HTTPException(status_code=401, detail="Authentication failed: No email found")

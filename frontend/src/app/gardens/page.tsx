@@ -51,7 +51,7 @@ export default function GardensPage() {
   const fetchUserSettings = async () => {
     try {
       const response = await fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -161,7 +161,7 @@ export default function GardensPage() {
   const fetchGardens = async () => {
     try {
       const response = await fetch(`${API_URL}/gardens/`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       setGardens(Array.isArray(data) ? data : []);
@@ -185,7 +185,7 @@ export default function GardensPage() {
         method: method,
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}`
+          Authorization: `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({ name: newGardenName, location: newGardenLocation }),
       });
@@ -210,7 +210,7 @@ export default function GardensPage() {
     try {
       await fetch(`${API_URL}/gardens/${id}`, { 
         method: "DELETE",
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       fetchGardens();
     } catch (error) {

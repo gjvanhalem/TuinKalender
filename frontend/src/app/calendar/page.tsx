@@ -67,7 +67,7 @@ export default function CalendarPage() {
         url += `?garden_id=${selectedGardenId}`;
       }
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       setAllYearTasks(Array.isArray(data) ? data : []);
@@ -79,7 +79,7 @@ export default function CalendarPage() {
   const fetchGardens = async () => {
     try {
       const response = await fetch(`${API_URL}/gardens/`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       setGardens(Array.isArray(data) ? data : []);
@@ -97,7 +97,7 @@ export default function CalendarPage() {
         url += `&garden_id=${selectedGardenId}`;
       }
       const response = await fetch(url, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       setTasks(Array.isArray(data) ? data : []);

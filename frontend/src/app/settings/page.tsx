@@ -24,7 +24,7 @@ export default function SettingsPage() {
   const fetchUserSettings = async () => {
     try {
       const response = await fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -47,7 +47,7 @@ export default function SettingsPage() {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}`
+          Authorization: `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({
           trefle_token: trefleToken,

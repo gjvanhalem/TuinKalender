@@ -22,13 +22,22 @@ export default function Navbar() {
   }, [session]);
 
   const checkUserStatus = async () => {
+    if (!session?.accessToken) return;
+
     try {
       const response = await fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+        headers: { Authorization: `Bearer ${session.accessToken}` },
       });
       
       if (response.status === 403) {
         signOut({ callbackUrl: "/?error=unauthorized" });
+        return;
+      }
+
+      if (response.status === 401) {
+        // Token might be invalid or expired
+        console.warn("Unauthorized access to /users/me");
+        signOut({ callbackUrl: "/?error=session_expired" });
         return;
       }
 

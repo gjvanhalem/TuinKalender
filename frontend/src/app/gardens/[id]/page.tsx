@@ -94,7 +94,7 @@ export default function GardenPlantsPage() {
   const fetchSharedUsers = async () => {
     try {
       const response = await fetch(`${API_URL}/gardens/${gardenId}/access`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       if (response.ok) {
         setSharedUsers(await response.json());
@@ -111,7 +111,7 @@ export default function GardenPlantsPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}` 
+          Authorization: `Bearer ${session?.accessToken}` 
         },
         body: JSON.stringify({ email: shareEmail })
       });
@@ -130,7 +130,7 @@ export default function GardenPlantsPage() {
     try {
       const response = await fetch(`${API_URL}/gardens/${gardenId}/share/${userId}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       if (response.ok) fetchSharedUsers();
     } catch (error) {}
@@ -149,7 +149,7 @@ export default function GardenPlantsPage() {
   const fetchUserSettings = async () => {
     try {
       const response = await fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -161,7 +161,7 @@ export default function GardenPlantsPage() {
   const fetchGarden = async () => {
     try {
       const response = await fetch(`${API_URL}/gardens/`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       if (Array.isArray(data)) {
@@ -177,7 +177,7 @@ export default function GardenPlantsPage() {
   const fetchPlants = async () => {
     try {
       const response = await fetch(`${API_URL}/plants/?garden_id=${gardenId}`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       setPlants(Array.isArray(data) ? data : []);
@@ -197,7 +197,7 @@ export default function GardenPlantsPage() {
     setIsSearching(true);
     try {
       const response = await fetch(`${API_URL}/search-plants/?query=${encodeURIComponent(query)}`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
       const results = Array.isArray(data) ? data : [];
@@ -240,7 +240,7 @@ export default function GardenPlantsPage() {
         method: method,
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}`
+          Authorization: `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({
           ...selectedPlant,
@@ -274,7 +274,7 @@ export default function GardenPlantsPage() {
     try {
       await fetch(`${API_URL}/plants/${id}`, { 
         method: "DELETE",
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       fetchPlants();
     } catch (error) {
@@ -306,7 +306,7 @@ export default function GardenPlantsPage() {
         method: "PUT",
         headers: { 
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}`
+          Authorization: `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({
           garden_id: targetGardenId
@@ -328,7 +328,7 @@ export default function GardenPlantsPage() {
     try {
       const response = await fetch(`${API_URL}/plants/${plant_id}/image/`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
         body: formData,
       });
       if (response.ok) {
@@ -346,7 +346,7 @@ export default function GardenPlantsPage() {
     try {
       const response = await fetch(
         `${API_URL}/ai-suggest/?common_name=${encodeURIComponent(selectedPlant.common_name || "")}&scientific_name=${encodeURIComponent(selectedPlant.scientific_name || "")}`,
-        { headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` } }
+        { headers: { Authorization: `Bearer ${session?.accessToken}` } }
       );
       const data = await response.json();
       

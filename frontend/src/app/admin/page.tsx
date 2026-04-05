@@ -27,7 +27,7 @@ export default function AdminPage() {
   const checkAdminStatus = async () => {
     try {
       const response = await fetch(`${API_URL}/users/me`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` },
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -46,7 +46,7 @@ export default function AdminPage() {
   const fetchUsers = async () => {
     try {
       const response = await fetch(`${API_URL}/admin/users`, {
-        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       if (response.ok) {
         const data = await response.json();
@@ -65,7 +65,7 @@ export default function AdminPage() {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json', 
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}` 
+          Authorization: `Bearer ${session?.accessToken}` 
         },
         body: JSON.stringify({ is_active: !user.is_active })
       });
@@ -85,7 +85,7 @@ export default function AdminPage() {
         method: 'PATCH',
         headers: { 
           'Content-Type': 'application/json', 
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}` 
+          Authorization: `Bearer ${session?.accessToken}` 
         },
         body: JSON.stringify({ is_admin: !user.is_admin })
       });
@@ -104,7 +104,7 @@ export default function AdminPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
-          Authorization: `Bearer ${session?.accessToken || session?.user?.email}` 
+          Authorization: `Bearer ${session?.accessToken}` 
         },
         body: JSON.stringify({ email: inviteEmail })
       });
