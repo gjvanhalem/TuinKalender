@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, MapPin, ExternalLink, Map, Leaf, ArrowRight, Edit2, Navigation, Search, X, Save } from "lucide-react";
+import { Plus, Trash2, MapPin, ExternalLink, Map, Leaf, ArrowRight, Edit2, Navigation, Search, X, Save, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -12,6 +12,8 @@ interface Garden {
   location: string;
   plant_count?: number;
   plant_summary?: string;
+  is_owner: boolean;
+  owner_email: string;
 }
 
 declare global {
@@ -278,7 +280,14 @@ export default function GardensPage() {
               
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-2xl font-black text-slate-900 group-hover:text-garden-green-700 transition-colors">{garden.name}</h3>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 group-hover:text-garden-green-700 transition-colors">{garden.name}</h3>
+                    {!garden.is_owner && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full mt-1">
+                         Gedeeld door {garden.owner_email.split('@')[0]}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     {garden.location && (
                       <a 
@@ -292,12 +301,23 @@ export default function GardensPage() {
                          <MapPin className="w-4 h-4" />
                       </a>
                     )}
-                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); startEdit(garden); }} className="p-2 bg-amber-50 text-amber-600 rounded-full hover:bg-amber-100">
-                       <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteGarden(garden.id); }} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100">
-                       <Trash2 className="w-4 h-4" />
-                    </button>
+                    {garden.is_owner && (
+                      <>
+                        <button 
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/gardens/${garden.id}?share=true`); }} 
+                          className="p-2 bg-blue-50 text-blue-600 rounded-full hover:bg-blue-100"
+                          title="Tuin delen"
+                        >
+                          <Share2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); startEdit(garden); }} className="p-2 bg-amber-50 text-amber-600 rounded-full hover:bg-amber-100">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); deleteGarden(garden.id); }} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
                 {garden.location && (

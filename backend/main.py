@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, select
 from database import engine, create_db_and_tables, get_session
 from sqlalchemy import func
-from models import Garden, Plant, Task, User
+from models import Garden, Plant, Task, User, GardenAccess
 from trefle_api import search_plants, get_plant_details, extract_tasks_from_trefle_data, download_image
 from ai_service import get_plant_suggestions_ai
 from auth import get_current_user
@@ -124,17 +124,31 @@ def create_garden(garden: Garden, current_user: User = Depends(get_current_user)
 
 @app.get("/gardens/", response_model=List[dict])
 def read_gardens(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    gardens = session.exec(select(Garden).where(Garden.user_id == current_user.id)).all()
+    # Find gardens owned by user OR shared with user
+    from sqlalchemy.orm import selectinload
+    
+    # Gardens owned - eager load user to get email
+    owned_query = select(Garden).where(Garden.user_id == current_user.id).options(selectinload(Garden.user))
+    owned_gardens = session.exec(owned_query).all()
+    
+    # Gardens shared - eager load user
+    shared_query = select(Garden).join(GardenAccess).where(GardenAccess.user_id == current_user.id).options(selectinload(Garden.user))
+    shared_gardens = session.exec(shared_query).all()
+    
+    all_gardens = list(owned_gardens) + [g for g in shared_gardens if g.id not in [og.id for og in owned_gardens]]
+    
     result = []
-    for garden in gardens:
+    for garden in all_gardens:
         garden_dict = garden.model_dump()
         plants = session.exec(select(Plant).where(Plant.garden_id == garden.id)).all()
         garden_dict["plant_count"] = len(plants)
-        # Create a summary of the first few plants
+        garden_dict["is_owner"] = garden.user_id == current_user.id
+        garden_dict["owner_email"] = garden.user.email if garden.user else "Onbekend"
+        
+        # Create a summary
         plant_names = [p.common_name for p in plants if p.common_name]
         if not plant_names:
             plant_names = [p.scientific_name for p in plants if p.scientific_name]
-            
         summary = ", ".join(plant_names[:3])
         if len(plant_names) > 3:
             summary += "..."
@@ -142,14 +156,69 @@ def read_gardens(current_user: User = Depends(get_current_user), session: Sessio
         result.append(garden_dict)
     return result
 
+@app.get("/gardens/{garden_id}/access", response_model=List[dict])
+def get_garden_access(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    if not garden or garden.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan toegang beheren")
+    
+    return [{"id": u.id, "email": u.email} for u in garden.shared_users]
+
+@app.post("/gardens/{garden_id}/share")
+def share_garden(garden_id: int, share_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    if not garden or garden.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan de tuin delen")
+    
+    email = share_data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="E-mail is verplicht")
+    
+    target_user = session.exec(select(User).where(User.email == email)).first()
+    if not target_user:
+        # Create a placeholder user so they can log in later
+        target_user = User(email=email, is_active=True, is_admin=False)
+        session.add(target_user)
+        session.commit()
+        session.refresh(target_user)
+    
+    if target_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Je kunt de tuin niet met jezelf delen")
+        
+    existing = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == target_user.id)).first()
+    if not existing:
+        access = GardenAccess(garden_id=garden_id, user_id=target_user.id)
+        session.add(access)
+        session.commit()
+        
+    return {"message": f"Tuin gedeeld met {email}"}
+
+@app.delete("/gardens/{garden_id}/share/{user_id}")
+def unshare_garden(garden_id: int, user_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    if not garden or garden.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan toegang intrekken")
+    
+    access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == user_id)).first()
+    if access:
+        session.delete(access)
+        session.commit()
+        
+    return {"message": "Toegang ingetrokken"}
+
 @app.put("/gardens/{garden_id}", response_model=Garden)
 def update_garden(garden_id: int, garden_data: Garden, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     db_garden = session.get(Garden, garden_id)
-    if not db_garden or db_garden.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Garden not found")
+    # Check ownership OR shared access for basic updates, but maybe only owner for settings?
+    # User said "zien en bewerken", so let's allow both.
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not db_garden or (db_garden.user_id != current_user.id and not has_shared_access):
+        raise HTTPException(status_code=404, detail="Garden not found or no access")
+        
     garden_data_dict = garden_data.model_dump(exclude_unset=True)
     for key, value in garden_data_dict.items():
-        if key != "user_id":
+        if key not in ["user_id", "id"]:
             setattr(db_garden, key, value)
     session.add(db_garden)
     session.commit()
@@ -160,7 +229,7 @@ def update_garden(garden_id: int, garden_data: Garden, current_user: User = Depe
 def delete_garden(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     db_garden = session.get(Garden, garden_id)
     if not db_garden or db_garden.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="Garden not found")
+        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan de tuin verwijderen")
     session.delete(db_garden)
     session.commit()
     return {"message": "Garden deleted"}
@@ -168,9 +237,11 @@ def delete_garden(garden_id: int, current_user: User = Depends(get_current_user)
 # Plant Endpoints
 @app.post("/plants/", response_model=Plant)
 def create_plant(plant: Plant, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    # Verify garden ownership
+    # Verify garden ownership OR shared access
     garden = session.get(Garden, plant.garden_id)
-    if not garden or garden.user_id != current_user.id:
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == plant.garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=403, detail="Not authorized for this garden")
 
     if not current_user.trefle_token:
@@ -250,17 +321,20 @@ def update_plant(plant_id: int, plant_data: Plant, current_user: User = Depends(
     if not db_plant:
         raise HTTPException(status_code=404, detail="Plant not found")
     
-    # Verify ownership through garden
+    # Verify ownership OR shared access through garden
     garden = session.get(Garden, db_plant.garden_id)
-    if not garden or garden.user_id != current_user.id:
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == db_plant.garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     plant_data_dict = plant_data.model_dump(exclude_unset=True)
     
-    # If garden_id is changing, verify ownership of the NEW garden
+    # If garden_id is changing, verify ownership/access of the NEW garden
     if "garden_id" in plant_data_dict and plant_data_dict["garden_id"] != db_plant.garden_id:
         target_garden = session.get(Garden, plant_data_dict["garden_id"])
-        if not target_garden or target_garden.user_id != current_user.id:
+        target_has_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == plant_data_dict["garden_id"], GardenAccess.user_id == current_user.id)).first()
+        if not target_garden or (target_garden.user_id != current_user.id and not target_has_access):
             raise HTTPException(status_code=403, detail="Not authorized for target garden")
 
     # Check if months have changed to sync with Tasks
@@ -287,19 +361,32 @@ def delete_plant(plant_id: int, current_user: User = Depends(get_current_user), 
         raise HTTPException(status_code=404, detail="Plant not found")
     
     garden = session.get(Garden, db_plant.garden_id)
-    if not garden or garden.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == db_plant.garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
+        raise HTTPException(status_code=403, detail="Niet geautoriseerd")
 
     session.delete(db_plant)
     session.commit()
     return {"message": "Plant deleted"}
 
+def get_accessible_garden_ids(user_id: int, session: Session) -> List[int]:
+    from models import GardenAccess
+    owned_ids = session.exec(select(Garden.id).where(Garden.user_id == user_id)).all()
+    shared_ids = session.exec(select(GardenAccess.garden_id).where(GardenAccess.user_id == user_id)).all()
+    return list(set(owned_ids + shared_ids))
+
 @app.get("/plants/", response_model=List[Plant])
 def read_plants(garden_id: Optional[int] = None, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    query = select(Plant).join(Garden)
-    query = query.where(Garden.user_id == current_user.id)
+    accessible_ids = get_accessible_garden_ids(current_user.id, session)
+    
     if garden_id:
-        query = query.where(Plant.garden_id == garden_id)
+        if garden_id not in accessible_ids:
+            raise HTTPException(status_code=403, detail="Geen toegang tot deze tuin")
+        query = select(Plant).where(Plant.garden_id == garden_id)
+    else:
+        query = select(Plant).where(Plant.garden_id.in_(accessible_ids))
+        
     plants = session.exec(query).all()
     
     # Manually attach tasks for the frontend view
@@ -353,8 +440,10 @@ def sync_plant_tasks(plant: Plant, session: Session):
 # Task Endpoints (Calendar)
 @app.get("/tasks/")
 def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    accessible_ids = get_accessible_garden_ids(current_user.id, session)
+
     # Sync all plants first to ensure calendar is accurate
-    user_plants = session.exec(select(Plant).join(Garden).where(Garden.user_id == current_user.id)).all()
+    user_plants = session.exec(select(Plant).where(Plant.garden_id.in_(accessible_ids))).all()
     for plant in user_plants:
         task_count = session.exec(select(Task).where(Task.plant_id == plant.id)).all()
         if not task_count and (plant.flowering_months or plant.pruning_months):
@@ -364,9 +453,13 @@ def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, cur
     if not month:
         result = []
         # Filter plants by garden if requested
-        query = select(Plant).join(Garden).where(Garden.user_id == current_user.id)
         if garden_id:
-            query = query.where(Plant.garden_id == garden_id)
+            if garden_id not in accessible_ids:
+                 raise HTTPException(status_code=403, detail="Geen toegang")
+            query = select(Plant).where(Plant.garden_id == garden_id)
+        else:
+            query = select(Plant).where(Plant.garden_id.in_(accessible_ids))
+            
         plants = session.exec(query).all()
         
         for plant in plants:
@@ -378,11 +471,7 @@ def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, cur
             # Get tasks for this plant
             tasks = session.exec(select(Task).where(Task.plant_id == plant.id)).all()
             
-            # If no tasks but we have flowering/pruning strings, they should have been synced above
-            # but let's just use them as a fallback for the view if needed
-            
-            # Format to a structure the frontend table expects:
-            # We can just return the plant with a 'tasks' list
+            # Format to a structure the frontend table expects
             result.append({
                 "plant": plant_dict,
                 "tasks": [t.model_dump() for t in tasks],
@@ -392,7 +481,7 @@ def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, cur
 
     # Monthly view (list mode)
     query = select(Task, Plant).join(Plant).join(Garden)
-    query = query.where(Garden.user_id == current_user.id)
+    query = query.where(Garden.id.in_(accessible_ids))
     if month:
         query = query.where(Task.month == month)
     if garden_id:
@@ -441,7 +530,9 @@ async def upload_plant_image(plant_id: int, file: UploadFile = File(...), curren
         raise HTTPException(status_code=404, detail="Plant not found")
         
     garden = session.get(Garden, plant.garden_id)
-    if not garden or garden.user_id != current_user.id:
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == plant.garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=403, detail="Not authorized")
         
     os.makedirs("images", exist_ok=True)

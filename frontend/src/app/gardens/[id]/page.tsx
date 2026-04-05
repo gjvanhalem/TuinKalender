@@ -1,8 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Search, MapPin, Leaf, Camera, ExternalLink, X, Check, Trash2, Edit2, Info, Sparkles, LayoutGrid, List, ArrowUpDown, Filter, ChevronDown, Move, ArrowRight } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
+import { 
+  Plus, Search, MapPin, Leaf, Camera, ExternalLink, X, Check, Trash2, Edit2, 
+  Info, Sparkles, LayoutGrid, List, ArrowUpDown, Filter, ChevronDown, Move, 
+  ArrowRight, Share2, UserMinus, Users
+} from "lucide-react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 interface Plant {
@@ -38,8 +42,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function GardenPlantsPage() {
   const { id: gardenId } = useParams();
+  const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const router = useRouter();
+  
+  // ... rest of state stays same ...
+
+  useEffect(() => {
+    if (searchParams.get('share') === 'true') {
+      setShowShareModal(true);
+    }
+  }, [searchParams]);
   const [garden, setGarden] = useState<any | null>(null);
   const [allGardens, setAllGardens] = useState<any[]>([]);
   const [userSettings, setUserSettings] = useState<any | null>(null);
@@ -58,6 +71,10 @@ export default function GardenPlantsPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [isLoading, setIsLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [sharedUsers, setSharedUsers] = useState<any[]>([]);
+  const [shareEmail, setShareEmail] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
 
   // Sorting and Filtering states
   const [searchTerm, setSearchTerm] = useState("");
@@ -70,8 +87,54 @@ export default function GardenPlantsPage() {
       fetchGarden();
       fetchPlants();
       fetchUserSettings();
+      fetchSharedUsers();
     }
   }, [session, status, gardenId]);
+
+  const fetchSharedUsers = async () => {
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/access`, {
+        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+      });
+      if (response.ok) {
+        setSharedUsers(await response.json());
+      }
+    } catch (error) {}
+  };
+
+  const handleShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shareEmail) return;
+    setIsSharing(true);
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/share`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.accessToken || session?.user?.email}` 
+        },
+        body: JSON.stringify({ email: shareEmail })
+      });
+      if (response.ok) {
+        setShareEmail("");
+        fetchSharedUsers();
+      } else {
+        const data = await response.json();
+        alert(data.detail || "Kon tuin niet delen");
+      }
+    } catch (error) {}
+    setIsSharing(false);
+  };
+
+  const removeShare = async (userId: number) => {
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/share/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session?.accessToken || session?.user?.email}` }
+      });
+      if (response.ok) fetchSharedUsers();
+    } catch (error) {}
+  };
 
   useEffect(() => {
     if (!selectedFile) {
@@ -404,6 +467,16 @@ export default function GardenPlantsPage() {
               <List className="w-5 h-5" />
             </button>
           </div>
+
+          {garden?.is_owner && (
+            <button 
+              onClick={() => setShowShareModal(true)}
+              className="bg-white text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-bold flex items-center gap-2 transition-all border border-slate-200 shadow-sm"
+            >
+              <Share2 className="w-5 h-5 text-blue-500" />
+              <span className="hidden sm:inline">Delen</span>
+            </button>
+          )}
 
           <button 
             onClick={() => {
@@ -885,6 +958,178 @@ export default function GardenPlantsPage() {
                    ))
                  }
                </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden border border-slate-100">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-blue-50/30">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+                  <Share2 className="w-6 h-6 text-blue-500" />
+                  Tuin Delen
+                </h2>
+                <p className="text-slate-500 text-sm font-medium">Beheer wie toegang heeft tot {garden?.name}.</p>
+              </div>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <form onSubmit={handleShare} className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Gebruiker uitnodigen (Google Email)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="naam@gmail.com"
+                    className="flex-1 p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all font-medium outline-none"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    required
+                  />
+                  <button 
+                    disabled={isSharing}
+                    className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                  >
+                    {isSharing ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : "Deel"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Mensen met toegang
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-garden-green-100 flex items-center justify-center text-garden-green-700 text-xs font-black ring-4 ring-white shadow-sm">J</div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">Jij</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Eigenaar</div>
+                      </div>
+                    </div>
+                  </div>
+                  {sharedUsers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group border border-slate-100/50 hover:bg-white transition-colors shadow-sm hover:shadow-md">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-black ring-4 ring-white shadow-sm">
+                          {u.email[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{u.email}</div>
+                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bewerker</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => removeShare(u.id)}
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Toegang intrekken"
+                      >
+                        <UserMinus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  {sharedUsers.length === 0 && (
+                    <p className="text-center py-4 text-xs text-slate-400 font-medium italic">Nog met niemand gedeeld</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden border border-slate-100">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-blue-50/30">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
+                  <Share2 className="w-6 h-6 text-blue-500" />
+                  Tuin Delen
+                </h2>
+                <p className="text-slate-500 text-sm font-medium">Beheer wie toegang heeft tot {garden?.name}.</p>
+              </div>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <form onSubmit={handleShare} className="space-y-3">
+                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Gebruiker uitnodigen (Google Email)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="naam@gmail.com"
+                    className="flex-1 p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all font-medium outline-none"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    required
+                  />
+                  <button 
+                    disabled={isSharing}
+                    className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                  >
+                    {isSharing ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : "Deel"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Mensen met toegang
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-garden-green-100 flex items-center justify-center text-garden-green-700 text-xs font-black ring-4 ring-white shadow-sm">J</div>
+                      <div>
+                        <div className="text-sm font-bold text-slate-900">Jij</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Eigenaar</div>
+                      </div>
+                    </div>
+                  </div>
+                  {sharedUsers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group border border-slate-100/50 hover:bg-white transition-colors shadow-sm hover:shadow-md">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-black ring-4 ring-white shadow-sm">
+                          {u.email[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{u.email}</div>
+                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bewerker</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => removeShare(u.id)}
+                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Toegang intrekken"
+                      >
+                        <UserMinus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  {sharedUsers.length === 0 && (
+                    <p className="text-center py-4 text-xs text-slate-400 font-medium italic">Nog met niemand gedeeld</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>

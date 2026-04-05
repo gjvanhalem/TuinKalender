@@ -138,7 +138,9 @@ export default function CalendarPage() {
             >
               <option value="all">Alle Tuinen</option>
               {gardens.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
+                <option key={g.id} value={g.id.toString()}>
+                  {g.name} {!g.is_owner ? `(van ${g.owner_email.split('@')[0]})` : ''}
+                </option>
               ))}
             </select>
           </div>

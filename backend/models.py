@@ -4,6 +4,10 @@ from sqlmodel import Field, SQLModel, Relationship, JSON
 
 DEFAULT_MODEL = os.getenv("DEFAULT_OPENROUTER_MODEL", "google/gemini-2.0-flash-lite-preview-02-05:free")
 
+class GardenAccess(SQLModel, table=True):
+    garden_id: int = Field(foreign_key="garden.id", primary_key=True)
+    user_id: int = Field(foreign_key="user.id", primary_key=True)
+
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
@@ -15,6 +19,7 @@ class User(SQLModel, table=True):
     openrouter_model: Optional[str] = Field(default=DEFAULT_MODEL)
     
     gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    shared_gardens: List["Garden"] = Relationship(back_populates="shared_users", link_model=GardenAccess)
 
 class Garden(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -24,6 +29,8 @@ class Garden(SQLModel, table=True):
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="gardens")
     plants: List["Plant"] = Relationship(back_populates="garden", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    
+    shared_users: List[User] = Relationship(back_populates="shared_gardens", link_model=GardenAccess)
 
 class Plant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
