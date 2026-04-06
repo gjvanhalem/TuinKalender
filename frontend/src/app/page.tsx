@@ -11,92 +11,124 @@ export default function Home() {
   const error = searchParams.get('error');
 
   return (
-    <main className="flex min-h-screen flex-col overflow-hidden">
+    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
       {/* Hero Section */}
-      <section className="relative pt-24 pb-32 px-6 bg-gradient-to-br from-garden-green-900 via-garden-green-800 to-slate-900 overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none">       
-          <div className="absolute -top-24 -left-24 w-96 h-96 bg-garden-green-400 rounded-full blur-[100px]" />
-          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-emerald-500 rounded-full blur-[120px]" />
-        </div>
+      <section className="mb-12">
+        {error === 'unauthorized' && (
+          <div className="mb-8 p-4 bg-error-container text-on-error-container rounded-xl font-bold flex items-center justify-center gap-2 animate-bounce border border-error/20">
+            <span className="material-symbols-outlined">warning</span>
+            Toegang geweigerd. U bent (nog) niet uitgenodigd.
+          </div>
+        )}
 
-        <div className="container mx-auto relative z-10 text-center">
-          {error === 'unauthorized' && (
-            <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/20 backdrop-blur-md border border-red-500/50 rounded-2xl text-red-200 font-bold flex items-center justify-center gap-2 animate-bounce">
-              <LogIn className="w-5 h-5" />
-              Toegang geweigerd. U bent (nog) niet uitgenodigd.
-            </div>
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+          <div>
+            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">
+              {session ? `Welkom terug, ${session.user?.name?.split(' ')[0]}` : 'Je Groene Oase'}
+            </span>
+            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
+              {session ? 'Dashboard' : 'TuinKalender'}
+            </h2>
+          </div>
+          {session ? (
+            <Link href="/gardens" className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center">
+              <span className="material-symbols-outlined">potted_plant</span>
+              <span>Bekijk Tuinen</span>
+            </Link>
+          ) : (
+            <button 
+              onClick={() => signIn('google')}
+              className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center"
+            >
+              <span className="material-symbols-outlined">login</span>
+              <span>Aan de slag</span>
+            </button>
           )}
+        </div>
 
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-sm font-medium mb-8">
-            <Leaf className="w-4 h-4 text-garden-green-400" />
-            Geef je tuin kracht
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black text-white mb-6 leading-tight tracking-tight">
-            Verzorg je planten,<br /><span className="text-garden-green-400">Vereenvoudig je tuinieren.</span>
-          </h1>
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-300 mb-12 font-medium">
-            Beheer je tuin met deskundige plantinzichten van Trefle en een aangepaste maandelijkse kalender.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            {session ? (
-              <>
-                <Link href="/gardens" className="group bg-garden-green-500 hover:bg-garden-green-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-garden-green-900/40 transition-all flex items-center gap-2">
-                  Mijn Tuinen
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
-                <Link href="/calendar" className="bg-white/10 hover:bg-white/15 text-white px-8 py-4 rounded-2xl font-bold text-lg backdrop-blur-md border border-white/20 transition-all">
-                  Bekijk Kalender
-                </Link>
-              </>
-            ) : (
-              <button 
-                onClick={() => signIn('google')}
-                className="group bg-garden-green-500 hover:bg-garden-green-600 text-white px-8 py-4 rounded-2xl font-bold text-lg shadow-lg shadow-garden-green-900/40 transition-all flex items-center gap-2"
-              >
-                Inloggen met Google om te beginnen
-                <LogIn className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+        {/* Search Area */}
+        <div className="relative group">
+          <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
+          <input 
+            className="w-full bg-surface-container-high border-none rounded-xl py-5 pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-lg placeholder:text-outline transition-all" 
+            placeholder="Zoek in je tuin..." 
+            type="text"
+          />
         </div>
       </section>
 
-      {/* Feature Grid */}
-      <section className="py-24 px-6 bg-white relative z-20 -mt-10 rounded-t-[40px] md:rounded-t-[80px]">
-        <div className="container mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-              <div className="w-14 h-14 bg-garden-green-100 rounded-2xl flex items-center justify-center mb-6">
-                <Map className="w-7 h-7 text-garden-green-600" />
+      {/* Feature Section / Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <div className="md:col-span-8 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="font-headline text-2xl font-bold">Waarom TuinKalender?</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="group bg-surface-container-low rounded-lg p-6 transition-all hover:bg-surface-container-high flex items-start gap-6">
+              <div className="w-14 h-14 bg-primary-container/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-primary text-3xl">map</span>
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-slate-900 tracking-tight">Meerdere Tuinen</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Organiseer je planten in verschillende fysieke locaties, zoals je achtertuin, voortuin of kas.
-              </p>
+              <div>
+                <h4 className="font-headline text-xl font-bold text-on-surface">Meerdere Tuinen</h4>
+                <p className="text-on-surface-variant mt-1">Organiseer je planten in verschillende fysieke locaties.</p>
+              </div>
             </div>
-            
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-              <div className="w-14 h-14 bg-blue-100 rounded-2xl flex items-center justify-center mb-6">
-                <Search className="w-7 h-7 text-blue-600" />
+
+            <div className="group bg-surface-container-low rounded-lg p-6 transition-all hover:bg-surface-container-high flex items-start gap-6">
+              <div className="w-14 h-14 bg-secondary-container/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-secondary text-3xl">search</span>
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-slate-900 tracking-tight">Aangedreven door Trefle</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Maak verbinding met de wereldwijde Trefle-database om automatisch wetenschappelijke namen en deskundige zorginstructies te krijgen.
-              </p>
+              <div>
+                <h4 className="font-headline text-xl font-bold text-on-surface">Trefle.io Kracht</h4>
+                <p className="text-on-surface-variant mt-1">Automatische wetenschappelijke data en zorginstructies.</p>
+              </div>
             </div>
-            
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-100 hover:shadow-xl hover:scale-[1.02] transition-all duration-300">
-              <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mb-6">
-                <Calendar className="w-7 h-7 text-amber-600" />
+
+            <div className="group bg-surface-container-low rounded-lg p-6 transition-all hover:bg-surface-container-high flex items-start gap-6">
+              <div className="w-14 h-14 bg-tertiary-container/20 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-tertiary text-3xl">calendar_month</span>
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-slate-900 tracking-tight">Persoonlijke Taken</h3>
-              <p className="text-slate-600 leading-relaxed">
-                Blijf op de hoogte van snoeien, planten en bloeien met een kalender die zich aanpast aan je planten.
-              </p>
+              <div>
+                <h4 className="font-headline text-xl font-bold text-on-surface">Persoonlijke Kalender</h4>
+                <p className="text-on-surface-variant mt-1">Snoeien, planten en bloeien in één overzicht.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-8 flex justify-center">
+            <div className="inline-flex items-center gap-3 bg-surface-container-high/50 px-6 py-2 rounded-full border border-outline-variant/10">
+              <div className="w-2 h-2 rounded-full bg-primary-container"></div>
+              <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Powered by Trefle.io</span>
             </div>
           </div>
         </div>
-      </section>
+
+        {/* Sidebar / Stats Area */}
+        <div className="md:col-span-4 space-y-6">
+          <div className="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-outline-variant/5">
+            <h5 className="font-headline text-lg font-bold mb-4">Tuin Status</h5>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-on-surface-variant">Actieve tuinen</span>
+                <span className="text-sm font-bold text-primary">0</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-on-surface-variant">Totaal planten</span>
+                <span className="text-sm font-bold text-secondary">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-primary-container/10 rounded-lg p-6 relative overflow-hidden">
+            <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">potted_plant</span>
+            <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">Tip</h5>
+            <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
+              "Begin met het toevoegen van je eerste tuin om je plantencollectie te organiseren."
+            </p>
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

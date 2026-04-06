@@ -1,9 +1,6 @@
 "use client";
 
 import React from "react";
-import { 
-  MapPin, Leaf, ExternalLink, Edit2, Trash2, Calendar, Info, Map
-} from "lucide-react";
 import Modal from "./Modal";
 
 interface Plant {
@@ -56,15 +53,15 @@ export default function PlantInfoModal({
       <div className="flex flex-col md:flex-row gap-8">
         {/* Left: Image */}
         <div className="w-full md:w-1/2">
-          <div className="aspect-square rounded-[40px] overflow-hidden bg-slate-100 shadow-inner border border-slate-100">
+          <div className="aspect-square rounded-2xl overflow-hidden bg-surface-container-low shadow-inner border border-outline-variant/10">
             {plant.image_path ? (
               <img src={`${API_URL}/${plant.image_path}`} alt={plant.common_name} className="w-full h-full object-cover" />
             ) : plant.image_url ? (
               <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
-                <Leaf className="w-16 h-16 mb-4 opacity-20" />
-                <span className="text-sm font-bold uppercase tracking-widest opacity-50">Geen foto</span>
+              <div className="w-full h-full flex flex-col items-center justify-center text-outline">
+                <span className="material-symbols-outlined text-6xl opacity-20">leaf</span>
+                <span className="text-xs font-bold uppercase tracking-widest mt-2">Geen foto</span>
               </div>
             )}
           </div>
@@ -72,16 +69,16 @@ export default function PlantInfoModal({
           <div className="mt-6 flex flex-wrap gap-2 justify-center">
             <button 
               onClick={() => onEdit(plant)}
-              className="flex items-center gap-2 px-6 py-3 bg-amber-50 text-amber-600 rounded-2xl font-bold hover:bg-amber-100 transition-all border border-amber-100/50"
+              className="flex items-center gap-2 px-6 py-3 bg-secondary-container/20 text-secondary rounded-xl font-bold hover:bg-secondary-container/40 transition-all active:scale-95"
             >
-              <Edit2 className="w-4 h-4" />
+              <span className="material-symbols-outlined text-xl">edit</span>
               Bewerken
             </button>
             <button 
               onClick={() => onDelete(plant.id)}
-              className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-all border border-red-100/50"
+              className="flex items-center gap-2 px-6 py-3 bg-error-container text-error rounded-xl font-bold hover:bg-error-container/40 transition-all active:scale-95"
             >
-              <Trash2 className="w-4 h-4" />
+              <span className="material-symbols-outlined text-xl">delete</span>
               Verwijderen
             </button>
           </div>
@@ -90,52 +87,52 @@ export default function PlantInfoModal({
         {/* Right: Info */}
         <div className="w-full md:w-1/2 space-y-6">
           <div>
-            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Wetenschappelijke Naam</h3>
-            <p className="text-xl font-bold text-slate-700 italic">{plant.scientific_name || "Niet opgegeven"}</p>
+            <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-1 px-1">Wetenschappelijk</h3>
+            <p className="text-xl font-bold text-on-surface italic">{plant.scientific_name || "Onbekend"}</p>
           </div>
 
           <div>
-            <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Locatie in de tuin</h3>
-            <p className="flex items-center gap-2 text-lg font-bold text-slate-700">
-              <MapPin className="w-5 h-5 text-garden-green-500" />
+            <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-1 px-1">Locatie</h3>
+            <p className="flex items-center gap-2 text-lg font-bold text-on-surface">
+              <span className="material-symbols-outlined text-primary">location_on</span>
               {plant.location_in_garden || "Niet opgegeven"}
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-garden-green-50/50 p-4 rounded-3xl border border-garden-green-100/30">
-               <div className="flex items-center gap-2 text-garden-green-600 mb-2">
-                 <Calendar className="w-4 h-4" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Bloeiperiode</span>
+            <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
+               <div className="flex items-center gap-2 text-primary mb-1">
+                 <span className="material-symbols-outlined text-xl">filter_vintage</span>
+                 <span className="text-[10px] font-bold uppercase tracking-widest">Bloei</span>
                </div>
-               <p className="text-lg font-black text-slate-800">{plant.flowering_months || "—"}</p>
+               <p className="text-lg font-bold text-on-surface">{plant.flowering_months || "—"}</p>
             </div>
-            <div className="bg-amber-50/50 p-4 rounded-3xl border border-amber-100/30">
-               <div className="flex items-center gap-2 text-amber-600 mb-2">
-                 <Calendar className="w-4 h-4" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Snoeimaanden</span>
+            <div className="bg-secondary/5 p-4 rounded-xl border border-secondary/10">
+               <div className="flex items-center gap-2 text-secondary mb-1">
+                 <span className="material-symbols-outlined text-xl">content_cut</span>
+                 <span className="text-[10px] font-bold uppercase tracking-widest">Snoei</span>
                </div>
-               <p className="text-lg font-black text-slate-800">{plant.pruning_months || "—"}</p>
+               <p className="text-lg font-bold text-on-surface">{plant.pruning_months || "—"}</p>
             </div>
           </div>
 
           {plant.remarks && (
             <div>
-              <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">Opmerkingen</h3>
-              <div className="bg-slate-50 p-6 rounded-[30px] border border-slate-100 italic text-slate-600 leading-relaxed">
+              <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-2 px-1">Opmerkingen</h3>
+              <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/10 italic text-on-surface-variant leading-relaxed text-sm">
                 "{plant.remarks}"
               </div>
             </div>
           )}
 
-          <div className="pt-6 border-t border-slate-100 flex flex-wrap gap-4">
+          <div className="pt-6 border-t border-outline-variant/10 flex flex-wrap gap-4">
             <a 
               href={`https://www.google.com/search?q=${encodeURIComponent(plant.common_name + " " + plant.scientific_name)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-garden-green-600 transition-colors"
+              className="flex items-center gap-2 text-xs font-bold text-outline hover:text-primary transition-colors"
             >
-              <ExternalLink className="w-4 h-4" />
+              <span className="material-symbols-outlined text-sm">open_in_new</span>
               Zoek op Google
             </a>
             
@@ -143,17 +140,17 @@ export default function PlantInfoModal({
               <>
                 <button 
                   onClick={() => onViewRawData?.(plant.raw_data)}
-                  className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-blue-600 transition-colors"
+                  className="flex items-center gap-2 text-xs font-bold text-outline hover:text-secondary transition-colors"
                 >
-                  <Info className="w-4 h-4" />
-                  Bekijk Ruwe Data
+                  <span className="material-symbols-outlined text-sm">code</span>
+                  Ruwe Data
                 </button>
                 {onMove && (
                   <button 
                     onClick={() => onMove(plant)}
-                    className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors"
+                    className="flex items-center gap-2 text-xs font-bold text-outline hover:text-primary transition-colors"
                   >
-                    <Map className="w-4 h-4" />
+                    <span className="material-symbols-outlined text-sm">move_item</span>
                     Verplaatsen
                   </button>
                 )}

@@ -1,10 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { 
-  Plus, Search, MapPin, Leaf, Camera, ExternalLink, X, Check, Trash2, Edit2, 
-  Info, Sparkles, Move, ArrowRight, Save
-} from "lucide-react";
 import Modal from "./Modal";
 
 interface Plant {
@@ -164,47 +160,36 @@ export default function PlantModal({
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title={isEditing ? (formData.common_name || "Plant Bewerken") : "Nieuwe Plant Toevoegen"}
+      title={isEditing ? (formData.common_name || "Plant Bewerken") : "Nieuwe Plant"}
       maxWidth="max-w-4xl"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Side: Form */}
         <div className="space-y-6">
-          {!isEditing && !userSettings?.openrouter_key && !userSettings?.openai_key && (
-            <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
-              <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-              <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
-                Voeg een <strong>AI API Key</strong> toe bij instellingen om deze plant automatisch te laten analyseren.
-              </p>
-            </div>
-          )}
-
           {(formData.common_name || formData.scientific_name) && (userSettings?.openrouter_key || userSettings?.openai_key) && (
             <button
               type="button"
               onClick={getAiSuggestions}
               disabled={isAiLoading}
-              className={`w-full py-3 px-4 bg-gradient-to-r ${userSettings?.ai_provider === 'openai' ? 'from-green-600 to-emerald-600' : 'from-blue-600 to-indigo-600'} text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-50`}
+              className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/20 disabled:opacity-50"
             >
               {isAiLoading ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span className="material-symbols-outlined animate-spin">progress_activity</span>
               ) : (
-                <Sparkles className="w-5 h-5" />
+                <span className="material-symbols-outlined">auto_awesome</span>
               )}
-              {isAiLoading ? "AI is aan het denken..." : `Vul aan met AI (${userSettings?.ai_provider === 'openai' ? 'OpenAI' : 'OpenRouter'})`}
+              {isAiLoading ? "Analyseren..." : "Vul aan met AI"}
             </button>
           )}
 
           <form id="plant-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 mb-1">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Wetenschappelijke Naam</label>
-              </div>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Wetenschappelijke Naam</label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   placeholder="Lavandula angustifolia"
-                  className="flex-grow p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                  className="flex-grow p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                   value={formData.scientific_name || ""}
                   onChange={(e) => setFormData({ ...formData, scientific_name: e.target.value })}
                 />
@@ -213,20 +198,20 @@ export default function PlantModal({
                     type="button"
                     onClick={handleSearch}
                     disabled={isSearching || (!formData.scientific_name && !formData.common_name) || !userSettings?.trefle_token}
-                    className="bg-garden-green-100 text-garden-green-600 p-3 rounded-xl hover:bg-garden-green-200 transition-all disabled:opacity-30"
+                    className="bg-primary/10 text-primary p-4 rounded-xl hover:bg-primary hover:text-white transition-all disabled:opacity-30"
                   >
-                    {isSearching ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-garden-green-600"></div> : <Search className="w-5 h-5" />}
+                    {isSearching ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : <span className="material-symbols-outlined">search</span>}
                   </button>
                 )}
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Nederlandse Naam</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Nederlandse Naam</label>
               <input
                 type="text"
                 placeholder="Echte Lavendel"
-                className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                 value={formData.common_name || ""}
                 onChange={(e) => setFormData({ ...formData, common_name: e.target.value })}
                 required
@@ -234,11 +219,11 @@ export default function PlantModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Locatie in Tuin</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Locatie in Tuin</label>
               <input
                 type="text"
                 placeholder="Zonnige border, noordzijde"
-                className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                 value={formData.location_in_garden || ""}
                 onChange={(e) => setFormData({ ...formData, location_in_garden: e.target.value })}
               />
@@ -246,21 +231,21 @@ export default function PlantModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Bloeimaanden</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Bloei (bijv. 4,5,6)</label>
                 <input
                   type="text"
-                  placeholder="bijv: 4,5,6"
-                  className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                  placeholder="maanden"
+                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                   value={formData.flowering_months || ""}
                   onChange={(e) => setFormData({ ...formData, flowering_months: e.target.value })}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Snoeimaanden</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Snoei (bijv. 3,10)</label>
                 <input
                   type="text"
-                  placeholder="bijv: 3,10"
-                  className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                  placeholder="maanden"
+                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                   value={formData.pruning_months || ""}
                   onChange={(e) => setFormData({ ...formData, pruning_months: e.target.value })}
                 />
@@ -268,11 +253,11 @@ export default function PlantModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Opmerkingen</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Opmerkingen</label>
               <textarea
-                placeholder="Extra informatie over verzorging..."
+                placeholder="Extra informatie..."
                 rows={3}
-                className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
+                className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                 value={formData.remarks || ""}
                 onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
               />
@@ -283,8 +268,8 @@ export default function PlantModal({
         {/* Right Side: Media & Info */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Foto</label>
-            <div className="relative aspect-square w-full rounded-[30px] bg-slate-100 overflow-hidden group/img border border-slate-100 shadow-inner">
+            <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Foto</label>
+            <div className="relative aspect-square w-full rounded-2xl bg-surface-container-low overflow-hidden group border border-outline-variant/10 shadow-inner">
               {imagePreview ? (
                 <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
               ) : formData.image_path ? (
@@ -292,13 +277,14 @@ export default function PlantModal({
               ) : formData.image_url ? (
                 <img src={formData.image_url} className="w-full h-full object-cover opacity-70" alt="Trefle" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-300">
-                  <Camera className="w-16 h-16" />
+                <div className="w-full h-full flex flex-col items-center justify-center text-outline">
+                  <span className="material-symbols-outlined text-6xl">photo_camera</span>
+                  <span className="text-xs font-bold uppercase mt-2">Geen foto</span>
                 </div>
               )}
-              <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer text-white font-bold text-sm gap-2 backdrop-blur-sm">
-                <Camera className="w-6 h-6" />
-                { (selectedFile || formData.image_path || formData.image_url) ? "Foto wijzigen" : "Foto uploaden" }
+              <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white font-bold text-sm gap-2 backdrop-blur-sm">
+                <span className="material-symbols-outlined">add_a_photo</span>
+                { (selectedFile || formData.image_path || formData.image_url) ? "Wijzigen" : "Uploaden" }
                 <input 
                   type="file" 
                   className="hidden" 
@@ -310,54 +296,54 @@ export default function PlantModal({
           </div>
 
           {showSearchResults && searchResults.length > 0 && (
-            <div className="bg-slate-50 p-6 rounded-[30px] border border-slate-100 animate-in slide-in-from-top-2">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Gevonden in Database</h3>
-                <button onClick={() => setShowSearchResults(false)} className="text-slate-400 hover:text-slate-600">
-                  <X className="w-4 h-4" />
+            <div className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10">
+              <div className="flex justify-between items-center mb-4 px-2">
+                <h3 className="text-xs font-bold text-outline uppercase tracking-widest">Gevonden planten</h3>
+                <button onClick={() => setShowSearchResults(false)} className="text-outline hover:text-on-surface">
+                  <span className="material-symbols-outlined text-sm">close</span>
                 </button>
               </div>
-              <div className="grid grid-cols-1 gap-2 max-h-60 overflow-auto custom-scrollbar pr-2">
+              <div className="space-y-2 max-h-60 overflow-auto custom-scrollbar pr-2">
                 {searchResults.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => selectPlantFromSearch(p)}
-                    className="flex items-center gap-3 p-3 bg-white hover:bg-garden-green-50 rounded-2xl transition-all text-left group border border-transparent hover:border-garden-green-100 shadow-sm"
+                    className="w-full flex items-center gap-3 p-3 bg-surface hover:bg-primary/5 rounded-xl transition-all text-left group border border-transparent hover:border-primary/20 shadow-sm"
                   >
-                    <div className="w-12 h-12 rounded-xl bg-slate-100 overflow-hidden shrink-0 shadow-inner">
+                    <div className="w-12 h-12 rounded-lg bg-surface-container-high overflow-hidden shrink-0">
                       {p.image_url && <img src={p.image_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform" alt="" />}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-bold text-slate-900 truncate">{p.common_name || p.scientific_name}</div>
-                      <div className="text-[10px] text-slate-400 italic truncate">{p.scientific_name}</div>
+                      <div className="text-sm font-bold text-on-surface truncate">{p.common_name || p.scientific_name}</div>
+                      <div className="text-[10px] text-outline italic truncate">{p.scientific_name}</div>
                     </div>
-                    <Plus className="w-4 h-4 text-slate-300 ml-auto group-hover:text-garden-green-500 transition-colors" />
+                    <span className="material-symbols-outlined text-outline ml-auto group-hover:text-primary transition-colors">add</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="flex flex-col gap-2 pt-4">
+          <div className="flex flex-col gap-3 pt-4">
             <button
               form="plant-form"
               type="submit"
               disabled={isSaving}
-              className="w-full bg-garden-green-600 hover:bg-garden-green-700 text-white p-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-garden-green-600/20 disabled:opacity-50"
+              className="w-full bg-primary text-white p-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 active:scale-95"
             >
               {isSaving ? (
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span className="material-symbols-outlined animate-spin">progress_activity</span>
               ) : (
                 <>
-                  <Save className="w-5 h-5" />
-                  Plant Opslaan
+                  <span className="material-symbols-outlined">save</span>
+                  <span>Opslaan</span>
                 </>
               )}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 p-4 rounded-2xl font-black transition-all"
+              className="w-full bg-surface-container-high text-on-surface-variant p-4 rounded-xl font-bold hover:bg-surface-container-highest transition-all active:scale-95"
             >
               Annuleren
             </button>

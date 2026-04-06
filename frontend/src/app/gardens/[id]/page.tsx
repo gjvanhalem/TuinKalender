@@ -1,13 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Plus, Search, MapPin, Leaf, Camera, ExternalLink, X, Check, Trash2, Edit2, 
-  Info, Sparkles, LayoutGrid, List, ArrowUpDown, Filter, ChevronDown, Move, 
-  ArrowRight, Share2, UserMinus, Users
-} from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import Link from "next/link";
 import PlantModal from "@/components/PlantModal";
 import PlantInfoModal from "@/components/PlantInfoModal";
 
@@ -33,13 +29,6 @@ interface Task {
   description: string;
 }
 
-interface TreflePlant {
-  id: number;
-  common_name: string;
-  scientific_name: string;
-  image_url: string;
-}
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function GardenPlantsPage() {
@@ -48,19 +37,11 @@ export default function GardenPlantsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  // ... rest of state stays same ...
-
-  useEffect(() => {
-    if (searchParams.get('share') === 'true') {
-      setShowShareModal(true);
-    }
-  }, [searchParams]);
   const [garden, setGarden] = useState<any | null>(null);
   const [allGardens, setAllGardens] = useState<any[]>([]);
   const [userSettings, setUserSettings] = useState<any | null>(null);
   const [plants, setPlants] = useState<Plant[]>([]);
   
-  // Modal states
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false);
   const [isPlantInfoModalOpen, setIsPlantInfoModalOpen] = useState(false);
   const [activePlant, setActivePlant] = useState<Partial<Plant> | null>(null);
@@ -68,16 +49,21 @@ export default function GardenPlantsPage() {
 
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
   const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharedUsers, setSharedUsers] = useState<any[]>([]);
   const [shareEmail, setShareEmail] = useState("");
   const [isSharing, setIsSharing] = useState(false);
 
-  // Sorting and Filtering states
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Plant, direction: 'asc' | 'desc' } | null>({ key: 'common_name', direction: 'asc' });
+
+  useEffect(() => {
+    if (searchParams.get('share') === 'true') {
+      setShowShareModal(true);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -278,7 +264,6 @@ export default function GardenPlantsPage() {
     }
   };
 
-  // Filter and Sort Logic
   const filteredAndSortedPlants = plants
     .filter(plant => {
       const searchStr = searchTerm.toLowerCase();
@@ -301,552 +286,206 @@ export default function GardenPlantsPage() {
       return 0;
     });
 
-  const requestSort = (key: keyof Plant) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  if (status === "loading") return <div className="p-12 text-center text-garden-green-700 font-bold">Laden...</div>;
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <div className="flex flex-col items-center gap-4">
+          <span className="material-symbols-outlined text-primary text-5xl animate-spin">potted_plant</span>
+          <p className="text-on-surface font-medium animate-pulse">Laden...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto p-6 md:p-12 max-w-7xl">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 mb-2 flex items-center gap-3">
-            <div className="bg-garden-green-100 p-2 rounded-2xl">
-              <Leaf className="w-8 h-8 text-garden-green-600" />
-            </div>
-            {allGardens.length > 1 ? (
-              <div className="relative inline-block group">
-                <select
-                  value={gardenId}
-                  onChange={(e) => router.push(`/gardens/${e.target.value}`)}
-                  className="appearance-none bg-transparent pr-10 focus:outline-none cursor-pointer hover:text-garden-green-700 transition-colors font-black text-slate-900 border-none p-0 m-0 leading-tight"
-                >
-                  {allGardens.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="w-6 h-6 absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 group-hover:text-garden-green-600 transition-colors" />
-              </div>
-            ) : (
-              garden ? garden.name : "Tuinplanten"
-            )}
-          </h1>
-          {garden?.location && (
-            <p className="text-slate-500 font-medium flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-garden-green-500" /> {garden.location}
-            </p>
-          )}
-        </div>
-        
-        <div className="flex gap-4 items-center">
-          {/* Quick Filter */}
-          <div className="hidden md:flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100">
-            <Filter className="w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Snel filteren..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium text-slate-600 outline-none w-40"
-            />
-          </div>
-
-          <div className="flex bg-white p-1 rounded-xl shadow-sm border border-slate-100">
-            <button 
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-garden-green-100 text-garden-green-600' : 'text-slate-400 hover:text-slate-600'}`}
-              title="Kaartweergave"
-            >
-              <LayoutGrid className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-garden-green-100 text-garden-green-600' : 'text-slate-400 hover:text-slate-600'}`}
-              title="Lijstweergave"
-            >
-              <List className="w-5 h-5" />
-            </button>
-          </div>
-
-          {garden?.is_owner && (
-            <button 
-              onClick={() => setShowShareModal(true)}
-              className="bg-white text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-bold flex items-center gap-2 transition-all border border-slate-200 shadow-sm"
-            >
-              <Share2 className="w-5 h-5 text-blue-500" />
-              <span className="hidden sm:inline">Delen</span>
-            </button>
-          )}
-
-          <button 
-            onClick={() => {
-              setActivePlant({ common_name: "", scientific_name: "" });
-              setIsEditing(false);
-              setIsPlantModalOpen(true);
-            }}
-            className="bg-garden-green-600 text-white hover:opacity-90 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-            Nieuwe Plant Toevoegen
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-12">
-        {/* Plant Inventory */}
-        <div className="lg:col-span-12">
-          {isLoading ? (
-            <div className="flex justify-center py-24">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-garden-green-600"></div>
-            </div>
-          ) : plants.length === 0 ? (
-            <div className="bg-white rounded-[60px] p-24 border border-dashed border-slate-200 text-center flex flex-col items-center">
-              <div className="bg-slate-50 p-8 rounded-full mb-8">
-                <Leaf className="w-16 h-16 text-slate-200" />
-              </div>
-              <h3 className="text-3xl font-black text-slate-900 mb-4">Nog geen planten hier</h3>
-              <p className="text-slate-500 max-w-sm font-medium">Gebruik de zoekfunctie om planten uit de Trefle database te vinden en aan je tuin toe te voegen.</p>
-            </div>
-          ) : viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-              {filteredAndSortedPlants.map((plant) => (
-                <div 
-                  key={plant.id} 
-                  onClick={() => startViewPlant(plant)}
-                  className="group bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer"
-                >
-                  <div className="aspect-[4/3] relative bg-slate-100 overflow-hidden">
-                    {plant.image_path ? (
-                      <img src={`${API_URL}/${plant.image_path}`} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    ) : plant.image_url ? (
-                      <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center">
-                        <div className="bg-white/50 backdrop-blur-sm p-4 rounded-full mb-3 text-slate-300">
-                          <Camera className="w-8 h-8" />
-                        </div>
-                        <label className="cursor-pointer bg-white px-4 py-2 rounded-xl text-sm font-bold text-garden-green-600 shadow-sm hover:bg-garden-green-50 transition-colors border border-garden-green-50">
-                          Foto Toevoegen
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleImageUpload(plant.id, file);
-                            }}
-                          />
-                        </label>
-                      </div>
-                    )}
-                    {/* Floating badge for location */}
-                    {plant.location_in_garden && (
-                      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-garden-green-700 shadow-sm flex items-center gap-1.5 border border-white">
-                        <MapPin className="w-3 h-3" /> {plant.location_in_garden}
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-8">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="text-2xl font-black text-slate-900 leading-tight truncate">{plant.common_name || "Onbekende Plant"}</h3>
-                      <div className="flex gap-2 shrink-0 ml-4">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); startEditPlant(plant); }} 
-                          className="p-2 bg-amber-50 text-amber-600 rounded-full hover:bg-amber-100 transition-colors"
-                        >
-                           <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); deletePlant(plant.id); }} 
-                          className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors"
-                        >
-                           <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-sm text-slate-400 italic font-medium mb-6 truncate">{plant.scientific_name}</p>
-                    
-                    <div className="space-y-3 mb-6">
-                      {(plant.flowering_months || plant.pruning_months) && (
-                        <div className="bg-slate-50 p-3 rounded-2xl">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Kalender Info</p>
-                          <div className="flex flex-wrap gap-2">
-                            {plant.flowering_months && (
-                              <div className="text-[10px] font-bold text-slate-600 bg-white px-2 py-1 rounded-md border border-slate-100 flex items-center gap-1">
-                                <span className="text-garden-green-600">Bloei:</span> {plant.flowering_months}
-                              </div>
-                            )}
-                            {plant.pruning_months && (
-                              <div className="text-[10px] font-bold text-slate-600 bg-white px-2 py-1 rounded-md border border-slate-100 flex items-center gap-1">
-                                <span className="text-amber-600">Snoei:</span> {plant.pruning_months}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {plant.remarks && (
-                        <div className="bg-garden-green-50/50 p-3 rounded-2xl border border-garden-green-100/20">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-garden-green-600 mb-1">Opmerkingen</p>
-                          <p className="text-xs text-slate-600 leading-relaxed italic line-clamp-3">"{plant.remarks}"</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setAdminPlantData(plant.raw_data); }} 
-                          className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
-                          title="Bekijk alle data (Admin)"
-                        >
-                           <Info className="w-4 h-4" />
-                        </button>
-                        {allGardens.length > 1 && (
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setMovingPlant(plant); }} 
-                            className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
-                            title="Verplaatsen naar andere tuin"
-                          >
-                             <Move className="w-4 h-4" />
-                          </button>
-                        )}
-                        <a 
-                          href={`https://www.google.com/search?q=${encodeURIComponent(plant.common_name + " " + plant.scientific_name)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-garden-green-50 hover:text-garden-green-600 transition-colors cursor-pointer"
-                          title="Zoek op Google"
-                        >
-                           <ExternalLink className="w-4 h-4" />
-                        </a>
-                      </div>
-                      <div className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                         ID #{plant.id}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
-              <div className="overflow-x-auto custom-scrollbar">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100">
-                      <th 
-                        className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-garden-green-600 transition-colors"
-                        onClick={() => requestSort('common_name')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Plant
-                          <ArrowUpDown className="w-3 h-3" />
-                        </div>
-                      </th>
-                      <th 
-                        className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 cursor-pointer hover:text-garden-green-600 transition-colors"
-                        onClick={() => requestSort('location_in_garden')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Locatie
-                          <ArrowUpDown className="w-3 h-3" />
-                        </div>
-                      </th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Kalender</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400">Opmerkingen</th>
-                      <th className="p-6 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Acties</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {filteredAndSortedPlants.map((plant) => (
-                      <tr 
-                        key={plant.id} 
-                        onClick={() => startViewPlant(plant)}
-                        className="hover:bg-slate-50/50 transition-colors cursor-pointer group/row"
-                      >
-                        <td className="p-6">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-                              {plant.image_path ? (
-                                <img src={`${API_URL}/${plant.image_path}`} alt={plant.common_name} className="w-full h-full object-cover" />
-                              ) : plant.image_url ? (
-                                <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover" />
-                              ) : (
-                                <Leaf className="w-full h-full p-3 text-slate-300" />
-                              )}
-                            </div>
-                            <div>
-                              <h4 className="font-bold text-slate-900 leading-tight group-hover/row:text-garden-green-600 transition-colors">{plant.common_name || "Onbekend"}</h4>
-                              <p className="text-xs text-slate-400 italic">{plant.scientific_name}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-6">
-                          {plant.location_in_garden ? (
-                            <span className="text-sm font-medium text-slate-600 flex items-center gap-1.5">
-                              <MapPin className="w-3 h-3 text-garden-green-500" /> {plant.location_in_garden}
-                            </span>
-                          ) : (
-                            <span className="text-slate-300 text-xs">—</span>
-                          )}
-                        </td>
-                        <td className="p-6">
-                          <div className="flex flex-col gap-1">
-                            {plant.flowering_months && (
-                              <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-garden-green-500"></span>
-                                Bloei: {plant.flowering_months}
-                              </span>
-                            )}
-                            {plant.pruning_months && (
-                              <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                                Snoei: {plant.pruning_months}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-6 max-w-[200px]">
-                          <p className="text-xs text-slate-500 italic truncate" title={plant.remarks}>
-                            {plant.remarks || "—"}
-                          </p>
-                        </td>
-                        <td className="p-6 text-right">
-                          <div className="flex gap-2 justify-end">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); setAdminPlantData(plant.raw_data); }} 
-                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
-                              title="Bekijk alle data (Admin)"
-                            >
-                              <Info className="w-4 h-4" />
-                            </button>
-                            {allGardens.length > 1 && (
-                              <button 
-                                onClick={(e) => { e.stopPropagation(); setMovingPlant(plant); }} 
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" 
-                                title="Verplaatsen"
-                              >
-                                <Move className="w-4 h-4" />
-                              </button>
-                            )}
-                            <a 
-                              href={`https://www.google.com/search?q=${encodeURIComponent(plant.common_name + " " + plant.scientific_name)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="p-2 text-slate-400 hover:text-garden-green-600 hover:bg-garden-green-50 rounded-lg transition-colors"
-                              title="Zoek op Google"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </a>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); startEditPlant(plant); }} 
-                              className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" 
-                              title="Bewerken"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); deletePlant(plant.id); }} 
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
-                              title="Verwijderen"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <PlantModal
-        isOpen={isPlantModalOpen}
-        onClose={() => setIsPlantModalOpen(false)}
-        plant={activePlant}
-        onSave={handleSavePlant}
-        isEditing={isEditing}
-        userSettings={userSettings}
-        gardenId={parseInt(gardenId as string)}
-        API_URL={API_URL}
-        accessToken={session?.accessToken as string}
-      />
-
-      <PlantInfoModal
-        isOpen={isPlantInfoModalOpen}
-        onClose={() => setIsPlantInfoModalOpen(false)}
-        plant={activePlant as Plant}
-        onEdit={startEditPlant}
-        onDelete={deletePlant}
-        onViewRawData={setAdminPlantData}
-        onMove={setMovingPlant}
-        API_URL={API_URL}
-        showAdminOptions={true}
-      />
-
-      {/* Admin Data Modal */}
-      {adminPlantData && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden border border-slate-100">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Plant Ruwe Data (Admin)</h2>
-                <p className="text-slate-500 text-sm font-medium">Volledige JSON-respons van Trefle.io</p>
-              </div>
-              <button 
-                onClick={() => setAdminPlantData(null)}
-                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            <div className="flex-grow overflow-auto p-8 custom-scrollbar bg-slate-900">
-              <pre className="text-xs text-emerald-400 font-mono leading-relaxed">
-                {JSON.stringify(adminPlantData, null, 2)}
-              </pre>
-            </div>
-            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trefle API v1 • TuinKalender Admin View</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Move Plant Modal */}
-      {movingPlant && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-slate-100">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">Verplaatsen</h2>
-                <p className="text-slate-500 text-xs font-medium">{movingPlant.common_name || movingPlant.scientific_name}</p>
-              </div>
-              <button onClick={() => setMovingPlant(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
-                <X className="w-5 h-5 text-slate-400" />
-              </button>
-            </div>
-            <div className="p-6 space-y-3">
-               <p className="text-sm font-bold text-slate-400 uppercase tracking-widest ml-1">Kies doeltuin</p>
-               <div className="grid grid-cols-1 gap-2">
-                 {allGardens
-                   .filter(g => g.id.toString() !== gardenId)
-                   .map(g => (
-                     <button
-                       key={g.id}
-                       onClick={() => movePlant(movingPlant, g.id)}
-                       className="w-full p-4 text-left bg-slate-50 hover:bg-garden-green-50 rounded-2xl border border-transparent hover:border-garden-green-100 transition-all group flex items-center justify-between"
-                     >
-                        <span className="font-bold text-slate-700 group-hover:text-garden-green-700">{g.name}</span>
-                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-garden-green-500 group-hover:translate-x-1 transition-all" />
-                     </button>
-                   ))
-                 }
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden border border-slate-100">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-blue-50/30">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                  <Share2 className="w-6 h-6 text-blue-500" />
-                  Tuin Delen
-                </h2>
-                <p className="text-slate-500 text-sm font-medium">Beheer wie toegang heeft tot {garden?.name}.</p>
-              </div>
-              <button 
-                onClick={() => setShowShareModal(false)}
-                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="p-8 space-y-8">
-              <form onSubmit={handleShare} className="space-y-3">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Gebruiker uitnodigen (Google Email)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    placeholder="naam@gmail.com"
-                    className="flex-1 p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all font-medium outline-none"
-                    value={shareEmail}
-                    onChange={(e) => setShareEmail(e.target.value)}
-                    required
-                  />
-                  <button 
-                    disabled={isSharing}
-                    className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
+      {/* Hero Section */}
+      <section className="mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+          <div>
+            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Mijn Tuin</span>
+            <div className="flex items-center gap-4">
+              <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
+                {garden?.name || "Laden..."}
+              </h2>
+              {allGardens.length > 1 && (
+                <div className="relative">
+                  <select
+                    value={gardenId}
+                    onChange={(e) => router.push(`/gardens/${e.target.value}`)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   >
-                    {isSharing ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : "Deel"}
-                  </button>
+                    {allGardens.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">swap_horiz</span>
                 </div>
-              </form>
+              )}
+            </div>
+            {garden?.location && (
+              <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-2 font-medium">
+                <span className="material-symbols-outlined text-sm">location_on</span>
+                {garden.location}
+              </p>
+            )}
+          </div>
+          <div className="flex gap-3">
+            {garden?.is_owner && (
+              <button 
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center justify-center w-14 h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-secondary transition-all active:scale-95 shadow-sm"
+                title="Deel Tuin"
+              >
+                <span className="material-symbols-outlined">share</span>
+              </button>
+            )}
+            <button 
+              onClick={() => {
+                setActivePlant({ common_name: "", scientific_name: "" });
+                setIsEditing(false);
+                setIsPlantModalOpen(true);
+              }}
+              className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined">add</span>
+              <span>Plant Toevoegen</span>
+            </button>
+          </div>
+        </div>
 
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Mensen met toegang
-                </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-garden-green-100 flex items-center justify-center text-garden-green-700 text-xs font-black ring-4 ring-white shadow-sm">J</div>
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">Jij</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Eigenaar</div>
-                      </div>
+        {/* Search Area */}
+        <div className="relative group">
+          <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
+          <input 
+            className="w-full bg-surface-container-high border-none rounded-xl py-5 pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-lg placeholder:text-outline transition-all" 
+            placeholder="Zoek in deze tuin..." 
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </section>
+
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-2">
+          <h3 className="font-headline text-2xl font-bold">Planten in {garden?.name}</h3>
+          <div className="flex items-center gap-4">
+            <div className="flex bg-surface-container-high p-1 rounded-xl">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-surface text-primary' : 'text-on-surface-variant'}`}
+              >
+                <span className="material-symbols-outlined">grid_view</span>
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-surface text-primary' : 'text-on-surface-variant'}`}
+              >
+                <span className="material-symbols-outlined">list</span>
+              </button>
+            </div>
+            <span className="bg-surface-container-lowest border border-outline-variant/15 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+              {filteredAndSortedPlants.length} Totaal
+            </span>
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface-container-low h-64 rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : filteredAndSortedPlants.length === 0 ? (
+          <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
+            <span className="material-symbols-outlined text-outline text-6xl mb-4">park</span>
+            <p className="text-on-surface-variant font-medium">Geen planten gevonden.</p>
+          </div>
+        ) : (
+          <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
+            {filteredAndSortedPlants.map((plant) => (
+              <div 
+                key={plant.id} 
+                className={`group bg-surface-container-low rounded-xl p-2 transition-all hover:bg-surface-container-high flex ${viewMode === 'grid' ? 'flex-col' : 'items-center gap-4'} editorial-shadow border border-outline-variant/5 cursor-pointer`}
+                onClick={() => startViewPlant(plant)}
+              >
+                <div className={`${viewMode === 'grid' ? 'w-full aspect-[4/3]' : 'w-24 h-24'} rounded-lg overflow-hidden flex-shrink-0 relative`}>
+                  {plant.image_path || plant.image_url ? (
+                    <img 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                      src={plant.image_path ? `${API_URL}/${plant.image_path}` : plant.image_url} 
+                      alt={plant.common_name} 
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-surface-container-highest flex items-center justify-center text-outline">
+                      <span className="material-symbols-outlined text-3xl">image</span>
                     </div>
+                  )}
+                  {plant.location_in_garden && viewMode === 'grid' && (
+                    <div className="absolute top-2 left-2 bg-surface/90 backdrop-blur-sm px-2 py-1 rounded-full text-[10px] font-bold text-on-surface border border-outline-variant/10 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px]">location_on</span>
+                      {plant.location_in_garden}
+                    </div>
+                  )}
+                </div>
+                
+                <div className={`flex-grow ${viewMode === 'grid' ? 'p-4' : 'pr-4'}`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors leading-tight">{plant.common_name || "Onbekend"}</h4>
+                      <p className="text-secondary font-medium italic text-sm line-clamp-1">{plant.scientific_name}</p>
+                    </div>
+                    {viewMode === 'grid' && (
+                      <div className="flex gap-2">
+                        <div className="w-8 h-8 rounded-full bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
+                          <span className="material-symbols-outlined text-[18px]">info</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {sharedUsers.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group border border-slate-100/50 hover:bg-white transition-colors shadow-sm hover:shadow-md">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-black ring-4 ring-white shadow-sm">
-                          {u.email[0].toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{u.email}</div>
-                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bewerker</div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => removeShare(u.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        title="Toegang intrekken"
-                      >
-                        <UserMinus className="w-5 h-5" />
-                      </button>
+                  
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {plant.flowering_months && (
+                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px]">filter_vintage</span>
+                        Bloei: {plant.flowering_months}
+                      </span>
+                    )}
+                    {plant.pruning_months && (
+                      <span className="text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[12px]">content_cut</span>
+                        Snoei: {plant.pruning_months}
+                      </span>
+                    )}
+                  </div>
+
+                  {viewMode === 'list' && plant.location_in_garden && (
+                    <div className="mt-1 flex items-center gap-1 text-[10px] text-on-surface-variant font-medium">
+                      <span className="material-symbols-outlined text-[12px]">location_on</span>
+                      {plant.location_in_garden}
                     </div>
-                  ))}
-                  {sharedUsers.length === 0 && (
-                    <p className="text-center py-4 text-xs text-slate-400 font-medium italic">Nog met niemand gedeeld</p>
                   )}
                 </div>
               </div>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
+      {/* FAB - Contextual add button for mobile */}
+      <button 
+        onClick={() => {
+          setActivePlant({ common_name: "", scientific_name: "" });
+          setIsEditing(false);
+          setIsPlantModalOpen(true);
+        }}
+        className="fixed bottom-24 right-6 w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center editorial-shadow hover:scale-105 active:scale-95 transition-all md:hidden z-[60]"
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: '32px' }}>add</span>
+      </button>
+
+      {/* Modals */}
       <PlantModal
         isOpen={isPlantModalOpen}
         onClose={() => {
@@ -876,6 +515,147 @@ export default function GardenPlantsPage() {
         API_URL={API_URL}
         showAdminOptions={true}
       />
-    </div>
+
+      {/* Admin Data Modal */}
+      {adminPlantData && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-on-surface/40 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-4xl max-h-[80vh] rounded-2xl flex flex-col overflow-hidden editorial-shadow">
+            <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+              <div>
+                <h2 className="font-headline text-2xl font-bold text-on-surface">Plant Ruwe Data</h2>
+                <p className="text-on-surface-variant text-sm font-medium">Trefle.io JSON</p>
+              </div>
+              <button 
+                onClick={() => setAdminPlantData(null)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="flex-grow overflow-auto p-6 bg-surface-dim">
+              <pre className="text-xs text-on-surface font-mono whitespace-pre-wrap">
+                {JSON.stringify(adminPlantData, null, 2)}
+              </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move Plant Modal */}
+      {movingPlant && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-on-surface/40 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-sm rounded-2xl overflow-hidden editorial-shadow">
+            <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
+              <h2 className="font-headline text-xl font-bold">Verplaatsen</h2>
+              <button onClick={() => setMovingPlant(null)} className="text-on-surface-variant">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-4 space-y-2">
+              <p className="text-xs font-bold text-outline uppercase tracking-widest px-2">Kies doeltuin</p>
+              {allGardens
+                .filter(g => g.id.toString() !== gardenId)
+                .map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => movePlant(movingPlant, g.id)}
+                    className="w-full p-4 text-left bg-surface-container-low hover:bg-primary-container/10 rounded-xl transition-all flex items-center justify-between group"
+                  >
+                    <span className="font-bold text-on-surface">{g.name}</span>
+                    <span className="material-symbols-outlined text-outline group-hover:translate-x-1 transition-transform">chevron_right</span>
+                  </button>
+                ))
+              }
+              {allGardens.length <= 1 && (
+                <p className="p-4 text-sm text-on-surface-variant italic">Geen andere tuinen beschikbaar.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-on-surface/40 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-md rounded-2xl overflow-hidden editorial-shadow border border-outline-variant/10">
+            <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-secondary/5">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary">share</span>
+                  Tuin Delen
+                </h2>
+                <p className="text-on-surface-variant text-sm font-medium">Toegang tot {garden?.name}</p>
+              </div>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <form onSubmit={handleShare} className="space-y-2">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Gebruiker uitnodigen</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="naam@gmail.com"
+                    className="flex-1 p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all font-medium outline-none"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    required
+                  />
+                  <button 
+                    disabled={isSharing}
+                    className="bg-secondary text-white px-6 rounded-xl font-bold hover:bg-secondary/90 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                  >
+                    {isSharing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : "Deel"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-outline uppercase tracking-widest px-1 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">group</span>
+                  Toegang
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary text-xs font-bold">J</div>
+                      <div>
+                        <div className="text-sm font-bold text-on-surface">Jij</div>
+                        <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Eigenaar</div>
+                      </div>
+                    </div>
+                  </div>
+                  {sharedUsers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl group hover:bg-surface-container-high transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary text-xs font-bold">
+                          {u.email[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-on-surface truncate max-w-[150px]">{u.email}</div>
+                          <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Bewerker</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => removeShare(u.id)}
+                        className="p-2 text-on-surface-variant hover:text-error transition-all"
+                        title="Verwijder"
+                      >
+                        <span className="material-symbols-outlined">person_remove</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

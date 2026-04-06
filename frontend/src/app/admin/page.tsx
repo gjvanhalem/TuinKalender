@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, UserPlus, Shield, Power, Mail, Garden, Leaf, LayoutGrid, CheckCircle2, XCircle } from "lucide-react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -98,9 +97,10 @@ export default function AdminPage() {
   const inviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
+    setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/admin/users/invite`, {
+      const response = await fetch(`${API_URL}/admin/invite`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
@@ -108,153 +108,138 @@ export default function AdminPage() {
         },
         body: JSON.stringify({ email: inviteEmail })
       });
-      
       if (response.ok) {
-        setMessage({ type: 'success', text: `Gebruiker ${inviteEmail} toegevoegd!` });
+        setMessage({ type: 'success', text: `Uitnodiging verstuurd naar ${inviteEmail}` });
         setInviteEmail("");
         fetchUsers();
       } else {
-        setMessage({ type: 'error', text: "Kon gebruiker niet toevoegen." });
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.detail || "Fout bij uitnodigen." });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: "Fout bij verbinding met server." });
+      setMessage({ type: 'error', text: "Server onbereikbaar." });
     }
-    
-    setTimeout(() => setMessage(null), 3000);
   };
 
-  if (!isAdmin || isLoading) {
-    return <div className="p-12 text-center text-garden-green-700 font-bold">Laden en controleren van rechten...</div>;
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface">
+        <div className="text-center">
+          <span className="material-symbols-outlined text-primary text-6xl animate-spin">progress_activity</span>
+          <p className="mt-4 text-on-surface font-bold">Verifiëren...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto p-6 md:p-12 max-w-6xl">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-slate-900 mb-2 flex items-center gap-3">
-            <div className="bg-garden-green-100 p-2 rounded-2xl">
-              <Users className="w-8 h-8 text-garden-green-600" />
-            </div>
-            Gebruikersbeheer
-          </h1>
-          <p className="text-slate-500 font-medium">Beheer wie toegang heeft tot de TuinKalender.</p>
-        </div>
-      </div>
+    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
+      <section className="mb-12">
+        <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Systeem</span>
+        <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">Beheer</h2>
+      </section>
 
-      {message && (
-        <div className={`mb-8 p-4 rounded-2xl flex items-center gap-3 font-bold animate-in fade-in slide-in-from-top-4 ${
-          message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'
-        }`}>
-          {message.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-          {message.text}
-        </div>
-      )}
-
-      {/* Invite Section */}
-      <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 mb-12">
-        <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
-          <UserPlus className="w-5 h-5 text-garden-green-600" />
-          Gebruiker Toevoegen
-        </h2>
-        <form onSubmit={inviteUser} className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-            <input
-              type="email"
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              placeholder="Google e-mailadres (bijv. naam@gmail.com)"
-              className="w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-              required
-            />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* User Management */}
+        <div className="lg:col-span-8 space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <h3 className="font-headline text-2xl font-bold">Gebruikers</h3>
+            <span className="bg-surface-container-lowest border border-outline-variant/15 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant uppercase tracking-wider">
+              {users.length} Totaal
+            </span>
           </div>
-          <button
-            type="submit"
-            className="bg-garden-green-600 hover:bg-garden-green-700 text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg shadow-garden-green-600/20 whitespace-nowrap"
-          >
-            Toevoegen aan lijst
-          </button>
-        </form>
-      </div>
 
-      {/* Users List */}
-      <div className="bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50">
-                <th className="p-6 text-xs font-black text-slate-400 uppercase tracking-widest">Gebruiker</th>
-                <th className="p-6 text-xs font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="p-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Tuinen</th>
-                <th className="p-6 text-xs font-black text-slate-400 uppercase tracking-widest text-center">Planten</th>
-                <th className="p-6 text-xs font-black text-slate-400 uppercase tracking-widest text-right">Acties</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-t border-slate-50 hover:bg-slate-50/50 transition-colors">
-                  <td className="p-6">
-                    <div className="font-bold text-slate-900">{u.email}</div>
-                    <div className="text-xs text-slate-400 font-medium">ID: {u.google_id || "Wacht op eerste login"}</div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex items-center gap-4">
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                            u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                            {u.is_active ? 'Actief' : 'Gedeactiveerd'}
-                        </span>
-                        {u.is_admin && (
-                            <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1">
-                                <Shield className="w-3 h-3" /> Admin
-                            </span>
-                        )}
-                    </div>
-                  </td>
-                  <td className="p-6 text-center">
-                    <div className="flex items-center justify-center gap-1 text-slate-600 font-bold">
-                        <LayoutGrid className="w-4 h-4 text-slate-300" />
-                        {u.garden_count}
-                    </div>
-                  </td>
-                  <td className="p-6 text-center">
-                    <div className="flex items-center justify-center gap-1 text-slate-600 font-bold">
-                        <Leaf className="w-4 h-4 text-slate-300" />
-                        {u.plant_count}
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => toggleStatus(u)}
-                        title={u.is_active ? "Deactiveren" : "Activeren"}
-                        className={`p-3 rounded-xl transition-all ${
-                          u.is_active 
-                            ? 'bg-red-50 text-red-600 hover:bg-red-100' 
-                            : 'bg-green-50 text-green-600 hover:bg-green-100'
-                        }`}
-                      >
-                        <Power className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => toggleAdmin(u)}
-                        title={u.is_admin ? "Admin rechten intrekken" : "Admin maken"}
-                        className={`p-3 rounded-xl transition-all ${
-                          u.is_admin 
-                            ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' 
-                            : 'bg-amber-50 text-amber-600 hover:bg-amber-100'
-                        }`}
-                      >
-                        <Shield className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 overflow-hidden editorial-shadow">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-surface-container-high/50 border-b border-outline-variant/10">
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-outline">Gebruiker</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">Status</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">Admin</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-right text-outline">Actie</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/10">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-surface-container-high/30 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-surface-container-highest overflow-hidden shrink-0 ring-2 ring-primary/5">
+                            {user.image ? <img src={user.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-outline"><span className="material-symbols-outlined">person</span></div>}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-bold text-on-surface truncate">{user.name || 'Onbekend'}</div>
+                            <div className="text-[10px] text-outline truncate">{user.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => toggleStatus(user)} className={`p-1.5 rounded-lg transition-all ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}`} title={user.is_active ? "Deactiveren" : "Activeren"}>
+                          <span className="material-symbols-outlined text-[20px]">{user.is_active ? 'check_circle' : 'cancel'}</span>
+                        </button>
+                      </td>
+                      <td className="p-4 text-center">
+                        <button onClick={() => toggleAdmin(user)} className={`p-1.5 rounded-lg transition-all ${user.is_admin ? 'bg-secondary/10 text-secondary' : 'bg-outline/10 text-outline'}`} title={user.is_admin ? "Ontneem Admin" : "Maak Admin"}>
+                          <span className="material-symbols-outlined text-[20px]">{user.is_admin ? 'shield' : 'person'}</span>
+                        </button>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="text-[10px] font-bold text-outline">ID #{user.id}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Invite Area */}
+        <div className="lg:col-span-4 space-y-6">
+          <h3 className="font-headline text-2xl font-bold px-2">Nodig uit</h3>
+          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
+            <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+              Voeg een e-mailadres toe om een nieuwe gebruiker toegang te geven tot het systeem.
+            </p>
+            <form onSubmit={inviteUser} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">E-mailadres</label>
+                <input
+                  type="email"
+                  placeholder="naam@gmail.com"
+                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all text-on-surface font-medium"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-secondary text-white p-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-secondary/20 active:scale-95"
+              >
+                <span className="material-symbols-outlined">person_add</span>
+                <span>Uitnodigen</span>
+              </button>
+            </form>
+
+            {message && (
+              <div className={`mt-4 p-3 rounded-lg text-xs font-bold flex items-center gap-2 ${message.type === 'success' ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}`}>
+                <span className="material-symbols-outlined text-sm">{message.type === 'success' ? 'check_circle' : 'error'}</span>
+                {message.text}
+              </div>
+            )}
+          </div>
+
+          <div className="bg-primary-container/10 rounded-2xl p-6 relative overflow-hidden">
+            <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">admin_panel_settings</span>
+            <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">Beheer Tip</h5>
+            <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
+              Alleen actieve gebruikers kunnen inloggen. Gebruikers die nog niet in het systeem staan, moeten eerst worden uitgenodigd.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
