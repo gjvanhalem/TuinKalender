@@ -1,10 +1,27 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Calendar, ChevronLeft, ChevronRight, Leaf, Flower2, Scissors, Sprout, ArrowRight, Map, LayoutGrid, Table2 } from "lucide-react";
+import { Calendar, ChevronLeft, ChevronRight, Leaf, Flower2, Scissors, Sprout, ArrowRight, Map, LayoutGrid, Table2, Info, Plus, X } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import PlantInfoModal from "@/components/PlantInfoModal";
+import PlantModal from "@/components/PlantModal";
+
+interface Plant {
+  id: number;
+  common_name: string;
+  scientific_name: string;
+  trefle_id: number;
+  location_in_garden: string;
+  image_path: string;
+  image_url: string;
+  remarks?: string;
+  flowering_months?: string;
+  pruning_months?: string;
+  raw_data?: any;
+  tasks?: any[];
+}
 
 interface Task {
   id: number;
@@ -44,14 +61,143 @@ export default function CalendarPage() {
   const [selectedGardenId, setSelectedGardenId] = useState<string>("all");
   const [viewMode, setViewMode] = useState<'list' | 'table'>('table');
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Modal states
+  const [isPlantInfoModalOpen, setIsPlantInfoModalOpen] = useState(false);
+  const [isPlantModalOpen, setIsPlantModalOpen] = useState(false);
+  const [activePlant, setActivePlant] = useState<Partial<Plant> | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [userSettings, setUserSettings] = useState<any | null>(null);
+  const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
+  const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/");
     } else if (session) {
       fetchGardens();
+      fetchUserSettings();
     }
   }, [session, status]);
+
+  const fetchUserSettings = async () => {
+    try {
+      const response = await fetch(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+      });
+      if (response.ok) {
+        setUserSettings(await response.json());
+      }
+    } catch (error) {}
+  };
+
+  const fetchPlantDetails = async (plantId: number) => {
+    if (!plantId) return;
+
+    setActivePlant({ id: plantId, common_name: "Laden..." } as any);
+    setIsPlantInfoModalOpen(true);
+
+    try {
+      const response = await fetch(`${API_URL}/plants/${plantId}`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      
+      if (response.ok) {
+        const plant = await response.json();
+        setActivePlant(plant);
+      }
+    } catch (error) {
+      console.error("Error fetching plant details:", error);
+    }
+  };
+
+  const handleSavePlant = async (plantData: Partial<Plant>, file: File | null) => {
+    try {
+      const isUpdating = !!plantData.id;
+      const url = isUpdating ? `${API_URL}/plants/${plantData.id}` : `${API_URL}/plants/`;
+      const method = isUpdating ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method: method,
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.accessToken}`
+        },
+        body: JSON.stringify({
+          ...plantData,
+          garden_id: isUpdating ? plantData.garden_id : (selectedGardenId === "all" ? undefined : parseInt(selectedGardenId)),
+        }),
+      });
+      if (response.ok) {
+        const savedPlant = await response.json();
+        const plantIdToUpload = isUpdating ? (plantData.id as number) : savedPlant.id;
+        
+        if (file) {
+          await handleImageUpload(plantIdToUpload, file);
+        }
+        setIsPlantModalOpen(false);
+        setActivePlant(null);
+        fetchTasks();
+        fetchAllYearTasks();
+      }
+    } catch (error) {
+      console.error("Error saving plant:", error);
+    }
+  };
+
+  const movePlant = async (plant: Plant, targetGardenId: number) => {
+    try {
+      const response = await fetch(`${API_URL}/plants/${plant.id}`, {
+        method: "PUT",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.accessToken}`
+        },
+        body: JSON.stringify({
+          garden_id: targetGardenId
+        }),
+      });
+      if (response.ok) {
+        setMovingPlant(null);
+        fetchTasks();
+        fetchAllYearTasks();
+      }
+    } catch (error) {
+      console.error("Error moving plant:", error);
+    }
+  };
+
+  const handleImageUpload = async (plant_id: number, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      await fetch(`${API_URL}/plants/${plant_id}/image/`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+        body: formData,
+      });
+    } catch (error) {}
+  };
+
+  const deletePlant = async (id: number) => {
+    if (!confirm("Weet je zeker dat je deze plant wilt verwijderen?")) return;
+    try {
+      await fetch(`${API_URL}/plants/${id}`, { 
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      setIsPlantInfoModalOpen(false);
+      fetchTasks();
+      fetchAllYearTasks();
+    } catch (error) {}
+  };
+
+  const startEditPlant = (plant: Plant) => {
+    setActivePlant(plant);
+    setIsEditing(true);
+    setIsPlantModalOpen(true);
+    setIsPlantInfoModalOpen(false);
+  };
 
   useEffect(() => {
     if (session) {
@@ -220,7 +366,12 @@ export default function CalendarPage() {
                           </span>
                         ))}
                       </div>
-                      <h3 className="text-2xl font-black text-slate-900">{task.plant.common_name}</h3>
+                      <h3 
+                        onClick={(e) => { e.stopPropagation(); fetchPlantDetails(task.plant_id); }}
+                        className="text-2xl font-black text-slate-900 cursor-pointer hover:text-garden-green-600 transition-colors"
+                      >
+                        {task.plant.common_name}
+                      </h3>
                       {task.plant.garden_name && (
                         <span className="text-slate-400 text-sm font-medium flex items-center gap-1 ml-0 md:ml-2">
                           <Map className="w-3 h-3" /> {task.plant.garden_name}
@@ -264,7 +415,10 @@ export default function CalendarPage() {
                     
                     return (
                       <tr key={item.plant_id} className="hover:bg-slate-50/50 transition-colors group/row">
-                        <td className="p-6">
+                        <td 
+                          className="p-6 cursor-pointer"
+                          onClick={(e) => { e.stopPropagation(); fetchPlantDetails(item.plant_id); }}
+                        >
                           <div className="flex flex-col">
                             <span className="font-bold text-slate-900 group-hover/row:text-garden-green-700 transition-colors">{plant.common_name}</span>
                             <span className="text-[10px] text-slate-400 italic">{plant.scientific_name}</span>
@@ -312,6 +466,99 @@ export default function CalendarPage() {
           </div>
         )}
       </div>
+
+      <PlantInfoModal
+        isOpen={isPlantInfoModalOpen}
+        onClose={() => {
+          setIsPlantInfoModalOpen(false);
+          setActivePlant(null);
+        }}
+        plant={activePlant as any}
+        onEdit={startEditPlant}
+        onDelete={deletePlant}
+        onViewRawData={setAdminPlantData}
+        onMove={setMovingPlant}
+        API_URL={API_URL}
+        showAdminOptions={true}
+      />
+
+      <PlantModal
+        isOpen={isPlantModalOpen}
+        onClose={() => {
+          setIsPlantModalOpen(false);
+          setActivePlant(null);
+        }}
+        plant={activePlant}
+        onSave={handleSavePlant}
+        isEditing={isEditing}
+        userSettings={userSettings}
+        gardenId={selectedGardenId !== "all" ? parseInt(selectedGardenId) : undefined}
+        API_URL={API_URL}
+        accessToken={session?.accessToken as string}
+      />
+
+      {/* Admin Data Modal */}
+      {adminPlantData && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden border border-slate-100">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">Plant Ruwe Data (Admin)</h2>
+                <p className="text-slate-500 text-sm font-medium">Volledige JSON-respons van Trefle.io</p>
+              </div>
+              <button 
+                onClick={() => setAdminPlantData(null)}
+                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="flex-grow overflow-auto p-8 custom-scrollbar bg-slate-900">
+              <pre className="text-xs text-emerald-400 font-mono leading-relaxed">
+                {JSON.stringify(adminPlantData, null, 2)}
+              </pre>
+            </div>
+            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
+               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Trefle API v1 • TuinKalender Admin View</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Move Plant Modal */}
+      {movingPlant && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-slate-100">
+            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h2 className="text-xl font-black text-slate-900">Verplaatsen</h2>
+                <p className="text-slate-500 text-xs font-medium">{movingPlant.common_name || movingPlant.scientific_name}</p>
+              </div>
+              <button onClick={() => setMovingPlant(null)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-3">
+               <p className="text-sm font-bold text-slate-400 uppercase tracking-widest ml-1">Kies doeltuin</p>
+               <div className="grid grid-cols-1 gap-2">
+                 {gardens
+                   .filter(g => g.id.toString() !== movingPlant.garden_id?.toString())
+                   .map(g => (
+                     <button
+                       key={g.id}
+                       onClick={() => movePlant(movingPlant, g.id)}
+                       className="w-full p-4 text-left bg-slate-50 hover:bg-garden-green-50 rounded-2xl border border-transparent hover:border-garden-green-100 transition-all group flex items-center justify-between"
+                     >
+                        <span className="font-bold text-slate-700 group-hover:text-garden-green-700">{g.name}</span>
+                        <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-garden-green-500 group-hover:translate-x-1 transition-all" />
+                     </button>
+                   ))
+                 }
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,6 +8,8 @@ import {
 } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import PlantModal from "@/components/PlantModal";
+import PlantInfoModal from "@/components/PlantInfoModal";
 
 interface Plant {
   id: number;
@@ -57,18 +59,15 @@ export default function GardenPlantsPage() {
   const [allGardens, setAllGardens] = useState<any[]>([]);
   const [userSettings, setUserSettings] = useState<any | null>(null);
   const [plants, setPlants] = useState<Plant[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<TreflePlant[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [selectedPlant, setSelectedPlant] = useState<Partial<Plant> | null>(null);
-  const [editingPlantId, setEditingPlantId] = useState<number | null>(null);
+  
+  // Modal states
+  const [isPlantModalOpen, setIsPlantModalOpen] = useState(false);
+  const [isPlantInfoModalOpen, setIsPlantInfoModalOpen] = useState(false);
+  const [activePlant, setActivePlant] = useState<Partial<Plant> | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
   const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
-  const [newPlantLocation, setNewPlantLocation] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [isLoading, setIsLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -136,16 +135,6 @@ export default function GardenPlantsPage() {
     } catch (error) {}
   };
 
-  useEffect(() => {
-    if (!selectedFile) {
-      setImagePreview(null);
-      return;
-    }
-    const objectUrl = URL.createObjectURL(selectedFile);
-    setImagePreview(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [selectedFile]);
-
   const fetchUserSettings = async () => {
     try {
       const response = await fetch(`${API_URL}/users/me`, {
@@ -189,52 +178,11 @@ export default function GardenPlantsPage() {
     }
   };
 
-  const handleSearch = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    const query = selectedPlant?.scientific_name || selectedPlant?.common_name || searchQuery;
-    if (!query) return;
-    
-    setIsSearching(true);
+  const handleSavePlant = async (plantData: Partial<Plant>, file: File | null) => {
     try {
-      const response = await fetch(`${API_URL}/search-plants/?query=${encodeURIComponent(query)}`, {
-        headers: { Authorization: `Bearer ${session?.accessToken}` }
-      });
-      const data = await response.json();
-      const results = Array.isArray(data) ? data : [];
-      setSearchResults(results);
-      if (results.length > 0) setShowSearchModal(true);
-      setIsSearching(false);
-    } catch (error) {
-      console.error("Error searching plants:", error);
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  };
-
-  const selectPlantFromSearch = (plant: TreflePlant) => {
-    setSelectedPlant({
-      common_name: plant.common_name,
-      scientific_name: plant.scientific_name,
-      trefle_id: plant.id,
-      image_url: plant.image_url,
-      flowering_months: "",
-      pruning_months: "",
-      remarks: "",
-    });
-    setSearchResults([]);
-    setShowSearchModal(false);
-    setSearchQuery("");
-    setSelectedFile(null);
-    setImagePreview(null);
-  };
-
-  const addPlant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedPlant) return;
-
-    try {
-      const url = editingPlantId ? `${API_URL}/plants/${editingPlantId}` : `${API_URL}/plants/`;
-      const method = editingPlantId ? "PUT" : "POST";
+      const isUpdating = !!plantData.id;
+      const url = isUpdating ? `${API_URL}/plants/${plantData.id}` : `${API_URL}/plants/`;
+      const method = isUpdating ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method: method,
@@ -243,25 +191,19 @@ export default function GardenPlantsPage() {
           Authorization: `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({
-          ...selectedPlant,
+          ...plantData,
           garden_id: parseInt(gardenId as string),
-          location_in_garden: newPlantLocation,
         }),
       });
       if (response.ok) {
         const savedPlant = await response.json();
-        const plantToUploadId = editingPlantId || savedPlant.id;
+        const plantToUploadId = isUpdating ? (plantData.id as number) : savedPlant.id;
         
-        // If a file was selected, upload it now
-        if (selectedFile) {
-          await handleImageUpload(plantToUploadId, selectedFile);
+        if (file) {
+          await handleImageUpload(plantToUploadId, file);
         }
-
-        setSelectedPlant(null);
-        setEditingPlantId(null);
-        setNewPlantLocation("");
-        setSelectedFile(null);
-        setImagePreview(null);
+        setIsPlantModalOpen(false);
+        setActivePlant(null);
         fetchPlants();
       }
     } catch (error) {
@@ -277,25 +219,22 @@ export default function GardenPlantsPage() {
         headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       fetchPlants();
+      setIsPlantInfoModalOpen(false);
     } catch (error) {
       console.error("Error deleting plant:", error);
     }
   };
 
   const startEditPlant = (plant: Plant) => {
-    setEditingPlantId(plant.id);
-    setSelectedPlant({
-      common_name: plant.common_name,
-      scientific_name: plant.scientific_name,
-      trefle_id: plant.trefle_id,
-      flowering_months: plant.flowering_months,
-      pruning_months: plant.pruning_months,
-      remarks: plant.remarks,
-      image_path: plant.image_path,
-      image_url: plant.image_url,
-    });
-    setNewPlantLocation(plant.location_in_garden);
-    setSelectedFile(null);
+    setActivePlant(plant);
+    setIsEditing(true);
+    setIsPlantModalOpen(true);
+    setIsPlantInfoModalOpen(false);
+  };
+
+  const startViewPlant = (plant: Plant) => {
+    setActivePlant(plant);
+    setIsPlantInfoModalOpen(true);
   };
 
   const movePlant = async (plant: Plant, targetGardenId: number) => {
@@ -336,38 +275,6 @@ export default function GardenPlantsPage() {
       }
     } catch (error) {
       console.error("Error uploading image:", error);
-    }
-  };
-
-  const getAiSuggestions = async () => {
-    if (!selectedPlant?.common_name && !selectedPlant?.scientific_name) return;
-    
-    setIsAiLoading(true);
-    try {
-      const response = await fetch(
-        `${API_URL}/ai-suggest/?common_name=${encodeURIComponent(selectedPlant.common_name || "")}&scientific_name=${encodeURIComponent(selectedPlant.scientific_name || "")}`,
-        { headers: { Authorization: `Bearer ${session?.accessToken}` } }
-      );
-      const data = await response.json();
-      
-      if (data && !data.error) {
-        const cleanMonths = (val: any) => {
-          if (Array.isArray(val)) return val.join(",");
-          return String(val).replace("[", "").replace("]", "").replace("{", "").replace("}", "");
-        };
-
-        setSelectedPlant({
-          ...selectedPlant,
-          common_name: data.dutch_name || selectedPlant.common_name,
-          flowering_months: cleanMonths(data.flowering_months || selectedPlant.flowering_months || ""),
-          pruning_months: cleanMonths(data.pruning_months || selectedPlant.pruning_months || ""),
-          remarks: data.remarks || selectedPlant.remarks,
-        });
-      }
-    } catch (error) {
-      console.error("Error fetching AI suggestions:", error);
-    } finally {
-      setIsAiLoading(false);
     }
   };
 
@@ -480,186 +387,21 @@ export default function GardenPlantsPage() {
 
           <button 
             onClick={() => {
-              if (selectedPlant || editingPlantId) {
-                setSelectedPlant(null);
-                setEditingPlantId(null);
-                setNewPlantLocation("");
-                setSelectedFile(null);
-                setImagePreview(null);
-              } else {
-                setSelectedPlant({ common_name: "", scientific_name: "" });
-              }
+              setActivePlant({ common_name: "", scientific_name: "" });
+              setIsEditing(false);
+              setIsPlantModalOpen(true);
             }}
-            className={`${(selectedPlant || editingPlantId) ? 'bg-slate-200 text-slate-600' : 'bg-garden-green-600 text-white'} hover:opacity-90 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg`}
+            className="bg-garden-green-600 text-white hover:opacity-90 px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg"
           >
-            {(selectedPlant || editingPlantId) ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
-            {(selectedPlant || editingPlantId) ? "Annuleren" : "Nieuwe Plant Toevoegen"}
+            <Plus className="w-5 h-5" />
+            Nieuwe Plant Toevoegen
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        {/* Left Column: Form & Search Results */}
-        <div className={`lg:col-span-4 space-y-8 ${(selectedPlant || editingPlantId) ? '' : 'hidden lg:block'}`}>
-          {(selectedPlant || editingPlantId) && (
-            <div className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 animate-in fade-in slide-in-from-left-4">
-              <h2 className="text-2xl font-black text-slate-900 mb-6">{editingPlantId ? "Plant Bewerken" : "Plantgegevens"}</h2>
-              
-              {!editingPlantId && !userSettings?.openrouter_key && !userSettings?.openai_key && (
-                <div className="mb-6 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start gap-3">
-                  <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
-                    Voeg een <strong>AI API Key</strong> toe bij instellingen om deze plant automatisch te laten analyseren door AI voor bloei- en snoeiadvies.
-                  </p>
-                </div>
-              )}
-
-              {!editingPlantId && (selectedPlant.common_name || selectedPlant.scientific_name) && (userSettings?.openrouter_key || userSettings?.openai_key) && (
-                <button
-                  type="button"
-                  onClick={getAiSuggestions}
-                  disabled={isAiLoading}
-                  className={`w-full mb-6 py-3 px-4 bg-gradient-to-r ${userSettings?.ai_provider === 'openai' ? 'from-green-600 to-emerald-600' : 'from-blue-600 to-indigo-600'} text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:shadow-lg transition-all disabled:opacity-50`}
-                >
-                  {isAiLoading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  ) : (
-                    <Sparkles className="w-5 h-5" />
-                  )}
-                  {isAiLoading ? "AI is aan het denken..." : `Vul aan met AI (${userSettings?.ai_provider === 'openai' ? 'OpenAI' : 'OpenRouter'})`}
-                </button>
-              )}
-
-              <form onSubmit={addPlant} className="flex flex-col gap-6">
-                {/* Image Upload Area in Form */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Foto</label>
-                  <div className="relative aspect-video w-full rounded-2xl bg-slate-100 overflow-hidden group/img">
-                    {imagePreview ? (
-                      <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
-                    ) : selectedPlant.image_path ? (
-                      <img src={`${API_URL}/${selectedPlant.image_path}`} className="w-full h-full object-cover" alt="Current" />
-                    ) : selectedPlant.image_url ? (
-                      <img src={selectedPlant.image_url} className="w-full h-full object-cover opacity-70" alt="Trefle" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-300">
-                        <Camera className="w-10 h-10" />
-                      </div>
-                    )}
-                    <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity cursor-pointer text-white font-bold text-sm gap-2">
-                      <Camera className="w-5 h-5" />
-                      { (selectedFile || selectedPlant.image_path || selectedPlant.image_url) ? "Foto wijzigen" : "Foto uploaden" }
-                      <input 
-                        type="file" 
-                        className="hidden" 
-                        accept="image/*" 
-                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} 
-                      />
-                    </label>
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Wetenschappelijke Naam</label>
-                    {!userSettings?.trefle_token && (
-                      <div className="group relative">
-                        <Info className="w-3 h-3 text-slate-300 cursor-help" />
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg shadow-xl z-50">
-                          Voeg een Trefle API token toe bij instellingen om automatisch plantgegevens te zoeken.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Lavandula angustifolia"
-                      className="flex-grow p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                      value={selectedPlant.scientific_name || ""}
-                      onChange={(e) => setSelectedPlant({ ...selectedPlant, scientific_name: e.target.value })}
-                    />
-                    {!editingPlantId && (
-                      <button
-                        type="button"
-                        onClick={handleSearch}
-                        disabled={isSearching || (!selectedPlant.scientific_name && !selectedPlant.common_name) || !userSettings?.trefle_token}
-                        className="bg-garden-green-100 text-garden-green-600 p-3 rounded-xl hover:bg-garden-green-200 transition-all disabled:opacity-30"
-                        title={userSettings?.trefle_token ? "Zoek gegevens in Trefle" : "Voeg eerst een Trefle token toe bij instellingen"}
-                      >
-                        {isSearching ? <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-garden-green-600"></div> : <Search className="w-5 h-5" />}
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Nederlandse Naam</label>
-                  <input
-                    type="text"
-                    placeholder="Echte Lavendel"
-                    className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                    value={selectedPlant.common_name || ""}
-                    onChange={(e) => setSelectedPlant({ ...selectedPlant, common_name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Locatie in Tuin</label>
-                  <input
-                    type="text"
-                    placeholder="Zonnige border, noordzijde"
-                    className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                    value={newPlantLocation}
-                    onChange={(e) => setNewPlantLocation(e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Bloeimaanden</label>
-                    <input
-                      type="text"
-                      placeholder="bijv: 4,5,6"
-                      className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                      value={selectedPlant.flowering_months || ""}
-                      onChange={(e) => setSelectedPlant({ ...selectedPlant, flowering_months: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Snoeimaanden</label>
-                    <input
-                      type="text"
-                      placeholder="bijv: 3,10"
-                      className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                      value={selectedPlant.pruning_months || ""}
-                      onChange={(e) => setSelectedPlant({ ...selectedPlant, pruning_months: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Opmerkingen</label>
-                  <textarea
-                    placeholder="Extra informatie over verzorging..."
-                    rows={3}
-                    className="w-full p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-garden-green-500 transition-all font-medium"
-                    value={selectedPlant.remarks || ""}
-                    onChange={(e) => setSelectedPlant({ ...selectedPlant, remarks: e.target.value })}
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="mt-4 w-full bg-garden-green-600 hover:bg-garden-green-700 text-white p-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg shadow-garden-green-600/20"
-                >
-                  <Check className="w-5 h-5" />
-                  Plant Opslaan
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column: Plant Inventory */}
-        <div className={`${selectedPlant || searchResults.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
+      <div className="grid grid-cols-1 gap-12">
+        {/* Plant Inventory */}
+        <div className="lg:col-span-12">
           {isLoading ? (
             <div className="flex justify-center py-24">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-garden-green-600"></div>
@@ -675,7 +417,11 @@ export default function GardenPlantsPage() {
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
               {filteredAndSortedPlants.map((plant) => (
-                <div key={plant.id} className="group bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500">
+                <div 
+                  key={plant.id} 
+                  onClick={() => startViewPlant(plant)}
+                  className="group bg-white rounded-[40px] shadow-sm border border-slate-100 overflow-hidden hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 cursor-pointer"
+                >
                   <div className="aspect-[4/3] relative bg-slate-100 overflow-hidden">
                     {plant.image_path ? (
                       <img src={`${API_URL}/${plant.image_path}`} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
@@ -711,10 +457,16 @@ export default function GardenPlantsPage() {
                     <div className="flex justify-between items-start mb-1">
                       <h3 className="text-2xl font-black text-slate-900 leading-tight truncate">{plant.common_name || "Onbekende Plant"}</h3>
                       <div className="flex gap-2 shrink-0 ml-4">
-                        <button onClick={() => startEditPlant(plant)} className="p-2 bg-amber-50 text-amber-600 rounded-full hover:bg-amber-100 transition-colors">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); startEditPlant(plant); }} 
+                          className="p-2 bg-amber-50 text-amber-600 rounded-full hover:bg-amber-100 transition-colors"
+                        >
                            <Edit2 className="w-4 h-4" />
                         </button>
-                        <button onClick={() => deletePlant(plant.id)} className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); deletePlant(plant.id); }} 
+                          className="p-2 bg-red-50 text-red-600 rounded-full hover:bg-red-100 transition-colors"
+                        >
                            <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -751,7 +503,7 @@ export default function GardenPlantsPage() {
                     <div className="flex items-center justify-between pt-6 border-t border-slate-50">
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => setAdminPlantData(plant.raw_data)} 
+                          onClick={(e) => { e.stopPropagation(); setAdminPlantData(plant.raw_data); }} 
                           className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-blue-50 hover:text-blue-600 transition-colors cursor-pointer"
                           title="Bekijk alle data (Admin)"
                         >
@@ -759,7 +511,7 @@ export default function GardenPlantsPage() {
                         </button>
                         {allGardens.length > 1 && (
                           <button 
-                            onClick={() => setMovingPlant(plant)} 
+                            onClick={(e) => { e.stopPropagation(); setMovingPlant(plant); }} 
                             className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 transition-colors cursor-pointer"
                             title="Verplaatsen naar andere tuin"
                           >
@@ -770,6 +522,7 @@ export default function GardenPlantsPage() {
                           href={`https://www.google.com/search?q=${encodeURIComponent(plant.common_name + " " + plant.scientific_name)}`}
                           target="_blank"
                           rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
                           className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-garden-green-50 hover:text-garden-green-600 transition-colors cursor-pointer"
                           title="Zoek op Google"
                         >
@@ -815,7 +568,11 @@ export default function GardenPlantsPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-50">
                     {filteredAndSortedPlants.map((plant) => (
-                      <tr key={plant.id} className="hover:bg-slate-50/50 transition-colors">
+                      <tr 
+                        key={plant.id} 
+                        onClick={() => startViewPlant(plant)}
+                        className="hover:bg-slate-50/50 transition-colors cursor-pointer group/row"
+                      >
                         <td className="p-6">
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 shrink-0">
@@ -828,7 +585,7 @@ export default function GardenPlantsPage() {
                               )}
                             </div>
                             <div>
-                              <h4 className="font-bold text-slate-900 leading-tight">{plant.common_name || "Onbekend"}</h4>
+                              <h4 className="font-bold text-slate-900 leading-tight group-hover/row:text-garden-green-600 transition-colors">{plant.common_name || "Onbekend"}</h4>
                               <p className="text-xs text-slate-400 italic">{plant.scientific_name}</p>
                             </div>
                           </div>
@@ -865,11 +622,19 @@ export default function GardenPlantsPage() {
                         </td>
                         <td className="p-6 text-right">
                           <div className="flex gap-2 justify-end">
-                            <button onClick={() => setAdminPlantData(plant.raw_data)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Bekijk alle data (Admin)">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); setAdminPlantData(plant.raw_data); }} 
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" 
+                              title="Bekijk alle data (Admin)"
+                            >
                               <Info className="w-4 h-4" />
                             </button>
                             {allGardens.length > 1 && (
-                              <button onClick={() => setMovingPlant(plant)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Verplaatsen">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setMovingPlant(plant); }} 
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" 
+                                title="Verplaatsen"
+                              >
                                 <Move className="w-4 h-4" />
                               </button>
                             )}
@@ -877,15 +642,24 @@ export default function GardenPlantsPage() {
                               href={`https://www.google.com/search?q=${encodeURIComponent(plant.common_name + " " + plant.scientific_name)}`}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="p-2 text-slate-400 hover:text-garden-green-600 hover:bg-garden-green-50 rounded-lg transition-colors"
                               title="Zoek op Google"
                             >
                               <ExternalLink className="w-4 h-4" />
                             </a>
-                            <button onClick={() => startEditPlant(plant)} className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Bewerken">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); startEditPlant(plant); }} 
+                              className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" 
+                              title="Bewerken"
+                            >
                               <Edit2 className="w-4 h-4" />
                             </button>
-                            <button onClick={() => deletePlant(plant.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Verwijderen">
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); deletePlant(plant.id); }} 
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" 
+                              title="Verwijderen"
+                            >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
@@ -900,9 +674,33 @@ export default function GardenPlantsPage() {
         </div>
       </div>
 
+      <PlantModal
+        isOpen={isPlantModalOpen}
+        onClose={() => setIsPlantModalOpen(false)}
+        plant={activePlant}
+        onSave={handleSavePlant}
+        isEditing={isEditing}
+        userSettings={userSettings}
+        gardenId={parseInt(gardenId as string)}
+        API_URL={API_URL}
+        accessToken={session?.accessToken as string}
+      />
+
+      <PlantInfoModal
+        isOpen={isPlantInfoModalOpen}
+        onClose={() => setIsPlantInfoModalOpen(false)}
+        plant={activePlant as Plant}
+        onEdit={startEditPlant}
+        onDelete={deletePlant}
+        onViewRawData={setAdminPlantData}
+        onMove={setMovingPlant}
+        API_URL={API_URL}
+        showAdminOptions={true}
+      />
+
       {/* Admin Data Modal */}
       {adminPlantData && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col overflow-hidden border border-slate-100">
             <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
               <div>
@@ -930,7 +728,7 @@ export default function GardenPlantsPage() {
 
       {/* Move Plant Modal */}
       {movingPlant && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-sm flex flex-col overflow-hidden border border-slate-100">
             <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
               <div>
@@ -1049,140 +847,35 @@ export default function GardenPlantsPage() {
         </div>
       )}
 
-      {/* Share Modal */}
-      {showShareModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-md flex flex-col overflow-hidden border border-slate-100">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-blue-50/30">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                  <Share2 className="w-6 h-6 text-blue-500" />
-                  Tuin Delen
-                </h2>
-                <p className="text-slate-500 text-sm font-medium">Beheer wie toegang heeft tot {garden?.name}.</p>
-              </div>
-              <button 
-                onClick={() => setShowShareModal(false)}
-                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="p-8 space-y-8">
-              <form onSubmit={handleShare} className="space-y-3">
-                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Gebruiker uitnodigen (Google Email)</label>
-                <div className="flex gap-2">
-                  <input
-                    type="email"
-                    placeholder="naam@gmail.com"
-                    className="flex-1 p-3 bg-slate-50 border-none rounded-xl focus:ring-2 focus:ring-blue-500 transition-all font-medium outline-none"
-                    value={shareEmail}
-                    onChange={(e) => setShareEmail(e.target.value)}
-                    required
-                  />
-                  <button 
-                    disabled={isSharing}
-                    className="bg-blue-600 text-white px-6 rounded-xl font-bold hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
-                  >
-                    {isSharing ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div> : "Deel"}
-                  </button>
-                </div>
-              </form>
+      <PlantModal
+        isOpen={isPlantModalOpen}
+        onClose={() => {
+          setIsPlantModalOpen(false);
+          setActivePlant(null);
+        }}
+        plant={activePlant}
+        onSave={handleSavePlant}
+        isEditing={isEditing}
+        userSettings={userSettings}
+        gardenId={parseInt(gardenId as string)}
+        API_URL={API_URL}
+        accessToken={session?.accessToken as string}
+      />
 
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Mensen met toegang
-                </h3>
-                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                  <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100/50">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-garden-green-100 flex items-center justify-center text-garden-green-700 text-xs font-black ring-4 ring-white shadow-sm">J</div>
-                      <div>
-                        <div className="text-sm font-bold text-slate-900">Jij</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Eigenaar</div>
-                      </div>
-                    </div>
-                  </div>
-                  {sharedUsers.map(u => (
-                    <div key={u.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl group border border-slate-100/50 hover:bg-white transition-colors shadow-sm hover:shadow-md">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-black ring-4 ring-white shadow-sm">
-                          {u.email[0].toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="text-sm font-bold text-slate-900 truncate max-w-[150px]">{u.email}</div>
-                          <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Bewerker</div>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => removeShare(u.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                        title="Toegang intrekken"
-                      >
-                        <UserMinus className="w-5 h-5" />
-                      </button>
-                    </div>
-                  ))}
-                  {sharedUsers.length === 0 && (
-                    <p className="text-center py-4 text-xs text-slate-400 font-medium italic">Nog met niemand gedeeld</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Trefle Search Results Modal */}
-      {showSearchModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-2xl flex flex-col overflow-hidden border border-slate-100">
-            <div className="p-8 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Plant Zoeken</h2>
-                <p className="text-slate-500 text-sm font-medium">Selecteer een plant uit de database.</p>
-              </div>
-              <button 
-                onClick={() => setShowSearchModal(false)}
-                className="p-3 bg-white hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-2xl transition-all shadow-sm border border-slate-100"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-            
-            <div className="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {searchResults.map((plant) => (
-                  <div
-                    key={plant.id}
-                    className="group p-4 bg-slate-50 hover:bg-garden-green-50 border border-transparent hover:border-garden-green-100 rounded-3xl cursor-pointer transition-all flex items-center gap-4 shadow-sm hover:shadow-md"
-                    onClick={() => selectPlantFromSearch(plant)}
-                  >
-                    <div className="relative w-16 h-16 shrink-0 overflow-hidden rounded-2xl bg-slate-200 shadow-inner">
-                      {plant.image_url ? (
-                        <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                      ) : (
-                        <Leaf className="w-full h-full p-4 text-slate-400" />
-                      )}
-                    </div>
-                    <div className="flex-grow min-w-0">
-                      <h4 className="font-bold text-slate-900 truncate group-hover:text-garden-green-800 transition-colors">{plant.common_name || plant.scientific_name}</h4>
-                      <p className="text-xs text-slate-500 italic truncate">{plant.scientific_name}</p>
-                    </div>
-                    <Plus className="w-5 h-5 text-slate-300 group-hover:text-garden-green-500 group-hover:scale-110 transition-all" />
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            <div className="p-6 bg-slate-50 border-t border-slate-100 text-center">
-               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gevonden via Trefle.io API</p>
-            </div>
-          </div>
-        </div>
-      )}
+      <PlantInfoModal
+        isOpen={isPlantInfoModalOpen}
+        onClose={() => {
+          setIsPlantInfoModalOpen(false);
+          setActivePlant(null);
+        }}
+        plant={activePlant as Plant}
+        onEdit={startEditPlant}
+        onDelete={deletePlant}
+        onViewRawData={setAdminPlantData}
+        onMove={setMovingPlant}
+        API_URL={API_URL}
+        showAdminOptions={true}
+      />
     </div>
   );
 }

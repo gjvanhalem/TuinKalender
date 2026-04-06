@@ -373,6 +373,19 @@ def delete_plant(plant_id: int, current_user: User = Depends(get_current_user), 
     session.commit()
     return {"message": "Plant deleted"}
 
+@app.get("/plants/{plant_id}", response_model=Plant)
+def read_plant_detail(plant_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    db_plant = session.get(Plant, plant_id)
+    if not db_plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+    
+    accessible_ids = get_accessible_garden_ids(current_user.id, session)
+    if db_plant.garden_id not in accessible_ids:
+        raise HTTPException(status_code=403, detail="Niet geautoriseerd")
+
+    db_plant.tasks = session.exec(select(Task).where(Task.plant_id == plant_id)).all()
+    return db_plant
+
 def get_accessible_garden_ids(user_id: int, session: Session) -> List[int]:
     from models import GardenAccess
     owned_ids = session.exec(select(Garden.id).where(Garden.user_id == user_id)).all()
