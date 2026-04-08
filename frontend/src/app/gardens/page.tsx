@@ -13,6 +13,7 @@ interface Garden {
   plant_count?: number;
   is_owner: boolean;
   owner_email: string;
+  weather?: any;
 }
 
 declare global {
@@ -40,6 +41,12 @@ export default function GardensPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingGarden, setEditingGarden] = useState<Garden | null>(null);
   const [isLoading, setIsLoading] = useState(!gardensCache);
+  
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [currentSharingGarden, setCurrentSharingGarden] = useState<Garden | null>(null);
+  const [sharedUsers, setSharedUsers] = useState<any[]>([]);
+  const [shareEmail, setShareEmail] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -162,6 +169,23 @@ export default function GardensPage() {
         const finalData = Array.isArray(data) ? data : [];
         setGardens(finalData);
         gardensCache = finalData;
+        
+        // Fetch weather for each garden that has a location
+        finalData.forEach(async (garden: Garden) => {
+          if (garden.location) {
+            try {
+              const weatherRes = await fetch(`${API_URL}/gardens/${garden.id}/weather`, {
+                headers: { Authorization: `Bearer ${session?.accessToken}` },
+              });
+              if (weatherRes.ok) {
+                const weatherData = await weatherRes.json();
+                setGardens(prev => prev.map(g => g.id === garden.id ? { ...g, weather: weatherData.current } : g));
+              }
+            } catch (e) {
+              console.error(`Failed to fetch weather for garden ${garden.id}:`, e);
+            }
+          }
+        });
       }
     } catch (error) {
       console.error("Failed to fetch gardens:", error);
@@ -210,6 +234,58 @@ export default function GardensPage() {
     }
   };
 
+  const fetchSharedUsers = async (gardenId: number) => {
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/access`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        setSharedUsers(await response.json());
+      }
+    } catch (error) {
+      console.error("Failed to fetch shared users:", error);
+    }
+  };
+
+  const handleShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!shareEmail || !currentSharingGarden) return;
+    setIsSharing(true);
+    try {
+      const response = await fetch(`${API_URL}/gardens/${currentSharingGarden.id}/share`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.accessToken}` 
+        },
+        body: JSON.stringify({ email: shareEmail })
+      });
+      if (response.ok) {
+        setShareEmail("");
+        fetchSharedUsers(currentSharingGarden.id);
+      } else {
+        const data = await response.json();
+        alert(data.detail || "Kon tuin niet delen");
+      }
+    } catch (error) {
+      console.error("Failed to share garden:", error);
+    }
+    setIsSharing(false);
+  };
+
+  const removeShare = async (userId: number) => {
+    if (!currentSharingGarden) return;
+    try {
+      const response = await fetch(`${API_URL}/gardens/${currentSharingGarden.id}/share/${userId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) fetchSharedUsers(currentSharingGarden.id);
+    } catch (error) {
+      console.error("Failed to remove shared user:", error);
+    }
+  };
+
   const deleteGarden = async (id: number) => {
     if (!confirm("Weet je zeker dat je deze tuin wilt verwijderen? Alle planten in deze tuin worden ook verwijderd.")) return;
     try {
@@ -225,30 +301,11 @@ export default function GardensPage() {
     }
   };
 
-  const shareGarden = async (id: number) => {
-    const email = prompt("E-mailadres van de persoon die je toegang wilt geven:");
-    if (!email) return;
-
-    try {
-      const response = await fetch(`${API_URL}/gardens/${id}/share`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session?.accessToken}`,
-        },
-        body: JSON.stringify({ email }),
-      });
-      
-      if (response.ok) {
-        alert("Tuin succesvol gedeeld!");
-      } else {
-        const errorData = await response.json();
-        alert(`Fout bij delen: ${errorData.detail || "Onbekende fout"}`);
-      }
-    } catch (error) {
-      console.error("Failed to share garden:", error);
-      alert("Er is een fout opgetreden bij het delen van de tuin.");
-    }
+  const shareGarden = (garden: Garden) => {
+    setCurrentSharingGarden(garden);
+    setShareEmail("");
+    fetchSharedUsers(garden.id);
+    setShowShareModal(true);
   };
 
   if (status === "loading") {
@@ -343,6 +400,16 @@ export default function GardensPage() {
                         <span className="material-symbols-outlined text-sm">location_on</span>
                         {garden.location || "Geen locatie"}
                       </p>
+                      {garden.weather && (
+                        <div className="flex items-center gap-2 mt-2 bg-primary/5 px-2 py-1 rounded-lg border border-primary/10 w-fit">
+                          <img 
+                            src={`https://openweathermap.org/img/wn/${garden.weather.weather[0].icon}.png`} 
+                            alt={garden.weather.weather[0].description} 
+                            className="w-5 h-5"
+                          />
+                          <span className="text-xs font-bold text-primary">{Math.round(garden.weather.main.temp)}°C</span>
+                        </div>
+                      )}
                       {!garden.is_owner && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-secondary-fixed-dim bg-secondary/10 px-2 py-0.5 rounded-full mt-2">
                           Gedeeld door {garden.owner_email.split('@')[0]}
@@ -364,7 +431,7 @@ export default function GardensPage() {
                             <span className="material-symbols-outlined text-[20px]">edit</span>
                           </button>
                           <button
-                            onClick={() => shareGarden(garden.id)}
+                            onClick={() => shareGarden(garden)}
                             className="w-10 h-10 rounded-full bg-surface-container-lowest flex items-center justify-center text-on-surface-variant hover:text-secondary hover:bg-secondary-container/20 transition-all"
                           >
                             <span className="material-symbols-outlined text-[20px]">share</span>
@@ -502,6 +569,89 @@ export default function GardensPage() {
                 {editingGarden ? "Wijzigingen Opslaan" : "Tuin Aanmaken"}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 bg-on-surface/40 backdrop-blur-sm">
+          <div className="bg-surface w-full max-w-md rounded-2xl overflow-hidden editorial-shadow border border-outline-variant/10">
+            <div className="p-8 border-b border-outline-variant/10 flex justify-between items-center bg-secondary/5">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2 text-on-surface">
+                  <span className="material-symbols-outlined text-secondary">share</span>
+                  Tuin Delen
+                </h2>
+                <p className="text-on-surface-variant text-sm font-medium">Toegang tot {currentSharingGarden?.name}</p>
+              </div>
+              <button 
+                onClick={() => setShowShareModal(false)}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <form onSubmit={handleShare} className="space-y-2">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Gebruiker uitnodigen</label>
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    placeholder="naam@gmail.com"
+                    className="flex-1 p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all font-medium outline-none text-on-surface"
+                    value={shareEmail}
+                    onChange={(e) => setShareEmail(e.target.value)}
+                    required
+                  />
+                  <button 
+                    disabled={isSharing}
+                    className="bg-secondary text-white px-6 rounded-xl font-bold hover:bg-secondary/90 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
+                  >
+                    {isSharing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : "Deel"}
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-outline uppercase tracking-widest px-1 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-sm">group</span>
+                  Toegang
+                </h3>
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary text-xs font-bold">J</div>
+                      <div>
+                        <div className="text-sm font-bold text-on-surface">Jij</div>
+                        <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Eigenaar</div>
+                      </div>
+                    </div>
+                  </div>
+                  {sharedUsers.map(u => (
+                    <div key={u.id} className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl group hover:bg-surface-container-high transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-secondary-container/20 flex items-center justify-center text-secondary text-xs font-bold">
+                          {u.email[0].toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-bold text-on-surface truncate max-w-[150px]">{u.email}</div>
+                          <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Bewerker</div>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => removeShare(u.id)}
+                        className="p-2 text-on-surface-variant hover:text-error transition-all"
+                        title="Verwijder"
+                      >
+                        <span className="material-symbols-outlined">person_remove</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

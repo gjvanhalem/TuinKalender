@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [openrouterModel, setOpenrouterModel] = useState(DEFAULT_MODEL);
   const [openaiKey, setOpenaiKey] = useState("");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
+  const [openweathermapKey, setOpenweatherMapKey] = useState("");
   const [aiProvider, setAiProvider] = useState("openrouter");
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -37,6 +38,7 @@ export default function SettingsPage() {
         setOpenrouterModel(data.openrouter_model || DEFAULT_MODEL);
         setOpenaiKey(data.openai_key || "");
         setOpenaiModel(data.openai_model || "gpt-4o-mini");
+        setOpenweatherMapKey(data.openweathermap_key || "");
         setAiProvider(data.ai_provider || "openrouter");
       }
     } catch (error) {
@@ -63,6 +65,7 @@ export default function SettingsPage() {
           openrouter_model: openrouterModel,
           openai_key: openaiKey,
           openai_model: openaiModel,
+          openweathermap_key: openweathermapKey,
           ai_provider: aiProvider,
         }),
       });
@@ -230,6 +233,28 @@ export default function SettingsPage() {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
+            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-info">cloud</span>
+              Weer (OpenWeatherMap)
+            </h3>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">API Key</label>
+                <input
+                  type="password"
+                  placeholder="Uw OpenWeatherMap API key"
+                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                  value={openweathermapKey}
+                  onChange={(e) => setOpenweatherMapKey(e.target.value)}
+                />
+                <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
+                  Gebruikt voor weersverwachtingen en waarschuwingen per tuin. Verkrijg een gratis key op <a href="https://openweathermap.org/api" target="_blank" className="text-primary underline">openweathermap.org</a>.
+                </p>
+              </div>
             </div>
           </div>
 

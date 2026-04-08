@@ -55,6 +55,9 @@ export default function GardenPlantsPage() {
   const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [isLoading, setIsLoading] = useState(!plantsCache[gardenId as string]);
+  const [weather, setWeather] = useState<any>(null);
+  const [aiAdvice, setAiAdvice] = useState<string>("");
+  const [isAdviceExpanded, setIsAdviceExpanded] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharedUsers, setSharedUsers] = useState<any[]>([]);
   const [shareEmail, setShareEmail] = useState("");
@@ -77,8 +80,37 @@ export default function GardenPlantsPage() {
       fetchPlants();
       fetchUserSettings();
       fetchSharedUsers();
+      fetchWeather();
+      fetchAiAdvice();
     }
   }, [session, status, gardenId]);
+
+  const fetchAiAdvice = async () => {
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/advice`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAiAdvice(data.advice);
+      }
+    } catch (error) {
+      console.error("Error fetching AI advice:", error);
+    }
+  };
+
+  const fetchWeather = async () => {
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/weather`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        setWeather(await response.json());
+      }
+    } catch (error) {
+      console.error("Error fetching weather:", error);
+    }
+  };
 
   const fetchSharedUsers = async () => {
     try {
@@ -339,12 +371,25 @@ export default function GardenPlantsPage() {
                   </div>
                 )}
               </div>
-              {garden?.location && (
-                <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-2 font-medium">
-                  <span className="material-symbols-outlined text-sm">location_on</span>
-                  {garden.location}
-                </p>
-              )}
+              <div className="flex flex-wrap items-center gap-4 mt-2">
+                {garden?.location && (
+                  <p className="text-on-surface-variant text-sm flex items-center gap-1 font-medium">
+                    <span className="material-symbols-outlined text-sm text-outline">location_on</span>
+                    {garden.location}
+                  </p>
+                )}
+                {weather?.current && (
+                  <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/10">
+                    <img 
+                      src={`https://openweathermap.org/img/wn/${weather.current.weather[0].icon}.png`} 
+                      alt={weather.current.weather[0].description} 
+                      className="w-6 h-6"
+                    />
+                    <span className="text-sm font-bold text-primary">{Math.round(weather.current.main.temp)}°C</span>
+                    <span className="text-[10px] font-bold text-primary/60 uppercase tracking-wider hidden sm:inline">{weather.current.weather[0].description}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex gap-3">
@@ -370,6 +415,65 @@ export default function GardenPlantsPage() {
             </button>
           </div>
         </div>
+
+        {/* Compact Dashboard Section */}
+        {(weather || aiAdvice) && (
+          <div className="mb-8 bg-surface-container-low rounded-3xl border border-outline-variant/10 editorial-shadow overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-outline-variant/10">
+              {/* Weather Details (Always visible) */}
+              {weather?.current && (
+                <div className="flex-grow p-4 md:p-6 flex items-center justify-around md:justify-start md:gap-12 bg-surface-container-low/50">
+                  <div className="flex flex-col items-center md:items-start">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Vochtigheid</p>
+                    <div className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary/60">humidity_percentage</span>
+                      <p className="text-sm font-bold text-on-surface">{weather.current.main.humidity}%</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center md:items-start">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Wind</p>
+                    <div className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary/60">air</span>
+                      <p className="text-sm font-bold text-on-surface">{Math.round(weather.current.wind.speed * 3.6)} km/u</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center md:items-start">
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Gevoel</p>
+                    <div className="flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary/60">thermostat</span>
+                      <p className="text-sm font-bold text-on-surface">{Math.round(weather.current.main.feels_like)}°C</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Advice Toggle */}
+              {aiAdvice && (
+                <button 
+                  onClick={() => setIsAdviceExpanded(!isAdviceExpanded)}
+                  className={`p-4 md:p-6 flex items-center justify-between md:justify-center gap-4 transition-all hover:bg-surface-container-high shrink-0 ${isAdviceExpanded ? 'bg-secondary/5 text-secondary' : 'text-on-surface-variant'}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-secondary">auto_awesome</span>
+                    <span className="text-sm font-bold uppercase tracking-widest">Slim Advies</span>
+                  </div>
+                  <span className={`material-symbols-outlined transition-transform duration-300 ${isAdviceExpanded ? 'rotate-180' : ''}`}>
+                    expand_more
+                  </span>
+                </button>
+              )}
+            </div>
+
+            {/* Expanded AI Advice Content */}
+            {aiAdvice && isAdviceExpanded && (
+              <div className="px-6 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 bg-secondary/5 border-t border-secondary/10">
+                <p className="text-sm text-on-surface leading-relaxed italic border-l-2 border-secondary/30 pl-4 py-2">
+                  {aiAdvice}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Search Area */}
         <div className="relative group">
@@ -530,7 +634,7 @@ export default function GardenPlantsPage() {
         onViewRawData={setAdminPlantData}
         onMove={setMovingPlant}
         API_URL={API_URL}
-        showAdminOptions={true}
+        showAdminOptions={userSettings?.is_admin}
       />
 
       {/* Admin Data Modal */}

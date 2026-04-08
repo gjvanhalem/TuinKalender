@@ -80,3 +80,56 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
     except Exception as e:
         print(f"{provider.capitalize()} AI Error: {e}")
         return {}
+
+def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, model: str = "openrouter/auto", provider: str = "openrouter") -> str:
+    """
+    Get dynamic gardening advice based on the current weather and the plants in the garden.
+    """
+    if not api_key:
+        return "AI-sleutel niet geconfigureerd."
+
+    # Safely extract weather data
+    current_weather = weather_data.get("current") or {}
+    weather_list = current_weather.get("weather", [{}])
+    weather_desc = weather_list[0].get("description", "onbekend") if weather_list else "onbekend"
+    temp = current_weather.get("main", {}).get("temp", "onbekende")
+    
+    prompt = f"""
+    Je bent een deskundige tuinier-assistent. Geef kort en krachtig advies (max 4 zinnen) in het Nederlands voor een tuin met de volgende planten:
+    {plants_summary}
+
+    Huidig weer: {weather_desc}, temperatuur: {temp}°C.
+
+    Focus op:
+    1. Directe actie op basis van het weer (bijv. water geven bij hitte, beschermen bij vorst).
+    2. Specifieke tips voor deze planten in deze omstandigheden.
+    3. Wees persoonlijk en behulpzaam.
+    """
+
+    try:
+        if provider == "openai":
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        else:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "http://localhost:3000",
+                "X-Title": "TuinKalender",
+            }
+
+        response = requests.post(
+            url=url,
+            headers=headers,
+            data=json.dumps({
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}]
+            })
+        )
+        response.raise_for_status()
+        result = response.json()
+        return result['choices'][0]['message']['content'].strip()
+    except Exception as e:
+        print(f"Advice AI Error: {e}")
+        return "Kon geen AI-advies ophalen op dit moment."

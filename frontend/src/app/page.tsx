@@ -120,34 +120,44 @@ export default function Home() {
             <h3 className="font-headline text-2xl font-bold">Waarom TuinKalender?</h3>
           </div>
           
-          <div className="space-y-4">
-            <div className="group bg-surface-container-low rounded-lg p-6 transition-all hover:bg-surface-container-high flex items-start gap-6">
-              <div className="w-14 h-14 bg-primary-container/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-primary text-3xl">map</span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+              <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-primary text-2xl">map</span>
               </div>
               <div>
-                <h4 className="font-headline text-xl font-bold text-on-surface">Meerdere Tuinen</h4>
-                <p className="text-on-surface-variant mt-1">Organiseer je planten in verschillende fysieke locaties.</p>
+                <h4 className="font-headline text-lg font-bold text-on-surface">Meerdere Tuinen</h4>
+                <p className="text-on-surface-variant text-sm mt-1">Organiseer je planten per locatie en deel toegang met anderen.</p>
               </div>
             </div>
 
-            <div className="group bg-surface-container-low rounded-lg p-6 transition-all hover:bg-surface-container-high flex items-start gap-6">
-              <div className="w-14 h-14 bg-secondary-container/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-secondary text-3xl">search</span>
+            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+              <div className="w-12 h-12 bg-secondary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-secondary text-2xl">cloud</span>
               </div>
               <div>
-                <h4 className="font-headline text-xl font-bold text-on-surface">Trefle.io Kracht</h4>
-                <p className="text-on-surface-variant mt-1">Automatische wetenschappelijke data en zorginstructies.</p>
+                <h4 className="font-headline text-lg font-bold text-on-surface">Live Weer-data</h4>
+                <p className="text-on-surface-variant text-sm mt-1">Real-time weersverwachting per tuin voor slimme planning.</p>
               </div>
             </div>
 
-            <div className="group bg-surface-container-low rounded-lg p-6 transition-all hover:bg-surface-container-high flex items-start gap-6">
-              <div className="w-14 h-14 bg-tertiary-container/20 rounded-2xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-tertiary text-3xl">calendar_month</span>
+            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+              <div className="w-12 h-12 bg-info-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-info text-2xl">auto_awesome</span>
               </div>
               <div>
-                <h4 className="font-headline text-xl font-bold text-on-surface">Persoonlijke Kalender</h4>
-                <p className="text-on-surface-variant mt-1">Snoeien, planten en bloeien in één overzicht.</p>
+                <h4 className="font-headline text-lg font-bold text-on-surface">AI Tuinadvies</h4>
+                <p className="text-on-surface-variant text-sm mt-1">Persoonlijk advies op basis van je planten en het huidige weer.</p>
+              </div>
+            </div>
+
+            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+              <div className="w-12 h-12 bg-tertiary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-tertiary text-2xl">checklist</span>
+              </div>
+              <div>
+                <h4 className="font-headline text-lg font-bold text-on-surface">Interactieve To-do</h4>
+                <p className="text-on-surface-variant text-sm mt-1">Vink snoei- en planttaken af in je persoonlijke jaaroverzicht.</p>
               </div>
             </div>
           </div>

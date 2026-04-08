@@ -28,6 +28,7 @@ interface Task {
   month: number;
   category: string;
   description: string;
+  is_completed?: boolean;
   plant_id: number;
   plant: {
     common_name: string;
@@ -52,6 +53,11 @@ const categoryIcons: Record<string, string> = {
   "Planten": "sprout",
   "Zaaien": "sprout",
   "Oogsten": "eco",
+  "Water": "water_drop",
+  "Voeding": "Nutrition",
+  "Verpotten": "potted_plant",
+  "Notitie": "sticky_note_2",
+  "Taak": "checklist"
 };
 
 // Client-side cache to persist data across tab switches within the session
@@ -81,6 +87,10 @@ export default function CalendarPage() {
   const [userSettings, setUserSettings] = useState<any | null>(calendarCache?.userSettings || null);
   const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
+  
+  const [isAddingTask, setIsAddingTask] = useState<number | null>(null); // plantId
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState("Notitie");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -258,6 +268,72 @@ export default function CalendarPage() {
     }
   };
 
+  const toggleTask = async (taskId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const response = await fetch(`${API_URL}/tasks/${taskId}/toggle`, {
+        method: "PATCH",
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        // Correct optimistic update for grouped task structure
+        setTasks(prev => prev.map(group => ({
+          ...group,
+          tasks: group.tasks.map((t: any) => t.id === taskId ? { ...t, is_completed: !t.is_completed } : t)
+        })));
+        fetchAllYearTasks(); // Refresh table view too
+      }
+    } catch (error) {
+      console.error("Error toggling task:", error);
+    }
+  };
+
+  const handleAddCustomTask = async (plantId: number) => {
+    if (!newTaskDescription.trim()) return;
+    
+    try {
+      const response = await fetch(`${API_URL}/tasks/`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.accessToken}`
+        },
+        body: JSON.stringify({
+          plant_id: plantId,
+          month: currentMonth,
+          category: newTaskCategory,
+          description: newTaskDescription,
+        }),
+      });
+      
+      if (response.ok) {
+        setNewTaskDescription("");
+        setIsAddingTask(null);
+        fetchTasks();
+        fetchAllYearTasks();
+      }
+    } catch (error) {
+      console.error("Error adding custom task:", error);
+    }
+  };
+
+  const deleteTask = async (taskId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("Weet je zeker dat je deze taak wilt verwijderen?")) return;
+    try {
+      const response = await fetch(`${API_URL}/tasks/${taskId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        fetchTasks();
+        fetchAllYearTasks();
+      }
+    } catch (error) {
+      console.error("Error deleting task:", error);
+    }
+  };
+
   const nextMonth = () => setCurrentMonth((prev) => (prev % 12) + 1);
   const prevMonth = () => setCurrentMonth((prev) => (prev === 1 ? 12 : prev - 1));
 
@@ -351,54 +427,151 @@ export default function CalendarPage() {
           </div>
         ) : viewMode === 'list' ? (
           (() => {
-            const filteredTasks = tasks.filter(task => 
-              selectedCategory === "all" || task.category.includes(selectedCategory)
-            );
+            const filteredGroups = tasks.filter(group => {
+              if (selectedCategory === "all") return true;
+              return group.tasks.some((t: any) => t.category.includes(selectedCategory));
+            });
 
-            return filteredTasks.length === 0 ? (
+            return filteredGroups.length === 0 ? (
               <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
                 <span className="material-symbols-outlined text-outline text-6xl mb-4">sunny</span>
                 <p className="text-on-surface-variant font-medium">Geen {selectedCategory !== "all" ? selectedCategory.toLowerCase() : 'taken'} voor {months[currentMonth - 1]}.</p>
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredTasks.map((task) => {
-                  const categories = task.category.split(", ").filter(cat => selectedCategory === "all" || cat.trim() === selectedCategory);
+                {filteredGroups.map((group) => {
+                  const plant = group.plant;
+                  const groupTasks = group.tasks.filter((t: any) => 
+                    selectedCategory === "all" || t.category.includes(selectedCategory)
+                  );
+                  
                   return (
-                    <div key={task.id} className="group bg-surface-container-low p-6 rounded-xl border border-outline-variant/5 hover:bg-surface-container-high transition-all flex flex-col md:flex-row items-center gap-6 cursor-pointer" onClick={() => fetchPlantDetails(task.plant_id)}>
+                    <div 
+                      key={group.plant_id} 
+                      className="group bg-surface-container-low p-6 rounded-xl border border-outline-variant/5 hover:bg-surface-container-high transition-all flex flex-col md:flex-row items-center gap-6 cursor-pointer" 
+                      onClick={() => group.plant_id && fetchPlantDetails(group.plant_id)}
+                    >
                       <div className="flex items-center gap-4">
-                        <div className="w-24 h-24 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 border border-outline-variant/10 relative">
-                          {task.plant.image_path || task.plant.image_url ? (
+                        <div className="w-20 h-20 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 border border-outline-variant/10 relative">
+                          {plant?.image_path || plant?.image_url ? (
                             <img 
-                              src={task.plant.image_path ? `${API_URL}/${task.plant.image_path}` : task.plant.image_url} 
-                              alt={task.plant.common_name} 
+                              src={plant?.image_path ? `${API_URL}/${plant.image_path}` : plant?.image_url} 
+                              alt={plant?.common_name || 'Plant'} 
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-outline">
-                              <span className="material-symbols-outlined text-3xl">image</span>
+                              <span className="material-symbols-outlined text-2xl">image</span>
                             </div>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          {categories.map((cat, idx) => (
-                            <div key={idx} className="w-14 h-14 rounded-2xl bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
-                              <span className="material-symbols-outlined text-2xl">{categoryIcons[cat.trim()] || 'leaf'}</span>
-                            </div>
-                          ))}
-                        </div>
                       </div>
+
                       <div className="flex-grow text-center md:text-left">
-                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
-                          <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{task.plant.common_name}</h4>
-                          <span className="text-[10px] bg-outline/10 text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{task.plant.garden_name}</span>
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3">
+                          <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{plant?.common_name || 'Onbekende Plant'}</h4>
+                          {plant?.garden_name && (
+                            <span className="text-[10px] bg-outline/10 text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{plant.garden_name}</span>
+                          )}
                         </div>
-                        <p className="text-on-surface-variant font-medium">{task.description}</p>
+                        
+                        <div className="space-y-3">
+                          {groupTasks.map((task: any) => {
+                            const isActionable = task.category !== "Bloei" && task.category !== "Notitie";
+                            const isCompleted = task.is_completed;
+                            
+                            return (
+                              <div key={task.id} className="flex items-center gap-3 group/task">
+                                {isActionable ? (
+                                  <button 
+                                    onClick={(e) => toggleTask(task.id, e)}
+                                    className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${isCompleted ? 'bg-primary border-primary text-white' : 'border-outline hover:border-primary text-transparent'}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[14px]">check</span>
+                                  </button>
+                                ) : (
+                                  <div className="w-6 h-6 flex items-center justify-center text-primary/40 shrink-0">
+                                    <span className="material-symbols-outlined text-[18px]">{categoryIcons[task.category] || 'info'}</span>
+                                  </div>
+                                )}
+                                <p className={`text-sm font-medium flex-grow ${isCompleted ? 'line-through text-on-surface-variant opacity-60' : 'text-on-surface'}`}>
+                                  <span className="font-bold text-primary/80 mr-2">{task.category}:</span>
+                                  {task.description}
+                                </p>
+                                {task.is_user_override && (
+                                  <button 
+                                    onClick={(e) => deleteTask(task.id, e)}
+                                    className="opacity-0 group-hover/task:opacity-100 p-1 text-outline hover:text-error transition-all"
+                                    title="Verwijder taak"
+                                  >
+                                    <span className="material-symbols-outlined text-sm">delete</span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Add Task Input */}
+                        <div className="mt-4 pt-4 border-t border-outline-variant/5" onClick={(e) => e.stopPropagation()}>
+                          {isAddingTask === group.plant_id ? (
+                            <div className="flex flex-col gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                              <div className="flex gap-2">
+                                <select 
+                                  value={newTaskCategory}
+                                  onChange={(e) => setNewTaskCategory(e.target.value)}
+                                  className="p-2 bg-surface-container-highest rounded-lg text-xs font-bold outline-none border-none focus:ring-1 focus:ring-primary/30"
+                                >
+                                  <option value="Notitie">Notitie</option>
+                                  <option value="Taak">Taak</option>
+                                  <option value="Snoeien">Snoeien</option>
+                                  <option value="Water">Water</option>
+                                  <option value="Voeding">Voeding</option>
+                                  <option value="Verpotten">Verpotten</option>
+                                </select>
+                                <input 
+                                  autoFocus
+                                  type="text"
+                                  placeholder="Wat moet er gebeuren?"
+                                  className="flex-1 p-2 bg-surface-container-highest rounded-lg text-sm outline-none border-none focus:ring-1 focus:ring-primary/30 text-on-surface"
+                                  value={newTaskDescription}
+                                  onChange={(e) => setNewTaskDescription(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleAddCustomTask(group.plant_id)}
+                                />
+                              </div>
+                              <div className="flex justify-end gap-2">
+                                <button 
+                                  onClick={() => setIsAddingTask(null)}
+                                  className="text-[10px] font-bold uppercase tracking-wider text-outline hover:text-on-surface px-2 py-1"
+                                >
+                                  Annuleren
+                                </button>
+                                <button 
+                                  onClick={() => handleAddCustomTask(group.plant_id)}
+                                  className="text-[10px] font-bold uppercase tracking-wider bg-primary text-white px-3 py-1 rounded-md shadow-sm"
+                                >
+                                  Toevoegen
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button 
+                              onClick={() => setIsAddingTask(group.plant_id)}
+                              className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary/60 hover:text-primary transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-sm">add_circle</span>
+                              Taak of Notitie Toevoegen
+                            </button>
+                          )}
+                        </div>
                       </div>
+
                       <div className="shrink-0 flex items-center gap-3">
-                        <Link href={`/gardens/${task.plant.garden_id}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary/10 text-primary transition-all">
-                          <span className="material-symbols-outlined">open_in_new</span>
-                        </Link>
+                        {plant?.garden_id && (
+                          <Link href={`/gardens/${plant.garden_id}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary/10 text-primary transition-all">
+                            <span className="material-symbols-outlined">open_in_new</span>
+                          </Link>
+                        )}
                       </div>
                     </div>
                   );
@@ -461,9 +634,10 @@ export default function CalendarPage() {
                           });
                           const hasPruning = monthTasks.some((t: any) => t.category.includes("Snoeien"));
                           const hasBlooming = monthTasks.some((t: any) => t.category.includes("Bloei"));
+                          const isAllCompleted = monthTasks.length > 0 && monthTasks.every((t: any) => t.is_completed);
                           return (
                             <td key={m} className={`p-2 text-center ${m === new Date().getMonth() + 1 ? 'bg-primary/5' : ''}`}>
-                              <div className="flex flex-col items-center justify-center gap-1 min-h-[40px]">
+                              <div className={`flex flex-col items-center justify-center gap-1 min-h-[40px] ${isAllCompleted ? 'opacity-30 grayscale' : ''}`}>
                                 {hasBlooming && <span className="material-symbols-outlined text-primary text-sm">filter_vintage</span>}
                                 {hasPruning && <span className="material-symbols-outlined text-secondary text-sm">content_cut</span>}
                               </div>
@@ -506,7 +680,7 @@ export default function CalendarPage() {
         onViewRawData={setAdminPlantData}
         onMove={setMovingPlant}
         API_URL={API_URL}
-        showAdminOptions={true}
+        showAdminOptions={userSettings?.is_admin}
       />
 
       <PlantModal

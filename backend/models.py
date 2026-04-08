@@ -20,6 +20,7 @@ class User(SQLModel, table=True):
     openrouter_model: Optional[str] = Field(default=DEFAULT_MODEL)
     openai_key: Optional[str] = None
     openai_model: Optional[str] = Field(default="gpt-4o-mini")
+    openweathermap_key: Optional[str] = None
     ai_provider: str = Field(default="openrouter") # "openrouter" or "openai"
     
     gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
@@ -60,6 +61,8 @@ class Task(SQLModel, table=True):
     category: str # Pruning, Flowering, Planting, etc.
     description: str
     is_user_override: bool = Field(default=False)
+    is_completed: bool = Field(default=False)
+    completion_date: Optional[str] = None # ISO format date string
     
     plant_id: int = Field(foreign_key="plant.id")
     plant: Plant = Relationship(back_populates="tasks")

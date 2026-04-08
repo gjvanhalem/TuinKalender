@@ -9,7 +9,8 @@ from database import engine, create_db_and_tables, get_session
 from sqlalchemy import func
 from models import Garden, Plant, Task, User, GardenAccess
 from trefle_api import search_plants, get_plant_details, extract_tasks_from_trefle_data, download_image
-from ai_service import get_plant_suggestions_ai
+from ai_service import get_plant_suggestions_ai, get_garden_advice_ai
+from weather_service import get_weather_data, get_forecast_data
 from auth import get_current_user
 from fastapi.staticfiles import StaticFiles
 import shutil
@@ -27,25 +28,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    create_db_and_tables()
-    
-    # Manual migration for garden.image_path if it doesn't exist
-    from sqlalchemy import text
-    with Session(engine) as session:
-        try:
-            session.execute(text("ALTER TABLE garden ADD COLUMN image_path VARCHAR"))
-            session.commit()
-            print("Successfully added image_path to garden table")
-        except Exception:
-            session.rollback()
-
-        try:
-            session.execute(text("ALTER TABLE \"user\" ADD COLUMN name VARCHAR"))
-            session.commit()
-            print("Successfully added name to user table")
-        except Exception:
-            session.rollback()
-            
+    # Schema updates are now handled by Alembic migrations.
+    # We just ensure the images directory exists.
     os.makedirs("images", exist_ok=True)
 
 @app.get("/")
@@ -72,6 +56,7 @@ def update_user_me(user_data: User, current_user: User = Depends(get_current_use
     db_user.openrouter_model = user_data.openrouter_model
     db_user.openai_key = user_data.openai_key
     db_user.openai_model = user_data.openai_model
+    db_user.openweathermap_key = user_data.openweathermap_key
     db_user.ai_provider = user_data.ai_provider
     
     session.add(db_user)
@@ -293,6 +278,66 @@ def delete_garden(garden_id: int, current_user: User = Depends(get_current_user)
     session.commit()
     return {"message": "Garden deleted"}
 
+@app.get("/gardens/{garden_id}/weather")
+def get_garden_weather(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    # Check access (owner or shared)
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
+        raise HTTPException(status_code=404, detail="Garden not found or no access")
+    
+    if not current_user.openweathermap_key:
+        raise HTTPException(status_code=400, detail="Geen OpenWeatherMap API key ingesteld")
+    
+    if not garden.location:
+        raise HTTPException(status_code=400, detail="Geen locatie ingesteld voor deze tuin")
+        
+    weather = get_weather_data(garden.location, current_user.openweathermap_key)
+    forecast = get_forecast_data(garden.location, current_user.openweathermap_key)
+    
+    return {
+        "current": weather,
+        "forecast": forecast
+    }
+
+@app.get("/gardens/{garden_id}/advice")
+def get_garden_advice(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    # Check access
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == current_user.id)).first()
+    
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
+        raise HTTPException(status_code=404, detail="Garden not found or no access")
+    
+    # Get weather
+    if not current_user.openweathermap_key or not garden.location:
+        raise HTTPException(status_code=400, detail="Weather key or location missing")
+        
+    weather = get_weather_data(garden.location, current_user.openweathermap_key)
+    forecast = get_forecast_data(garden.location, current_user.openweathermap_key)
+    weather_context = {"current": weather, "forecast": forecast}
+    
+    # Get plants summary
+    plants = session.exec(select(Plant).where(Plant.garden_id == garden.id)).all()
+    plant_names = [p.common_name or p.scientific_name for p in plants]
+    plants_summary = ", ".join(plant_names[:10]) # Limit to first 10 for prompt efficiency
+    
+    # Get AI settings
+    provider = current_user.ai_provider or "openrouter"
+    if provider == "openai":
+        api_key = current_user.openai_key
+        model = current_user.openai_model or "gpt-4o-mini"
+    else:
+        api_key = current_user.openrouter_key
+        model = current_user.openrouter_model or "openrouter/auto"
+        
+    if not api_key:
+        raise HTTPException(status_code=400, detail="AI API key missing")
+        
+    advice = get_garden_advice_ai(plants_summary, weather_context, api_key, model, provider)
+    return {"advice": advice}
+
 # Plant Endpoints
 @app.post("/plants/", response_model=Plant)
 def create_plant(plant: Plant, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
@@ -495,10 +540,13 @@ def sync_plant_tasks(plant: Plant, session: Session):
     """
     Ensure Task records match the flowering_months and pruning_months strings.
     """
-    # Delete existing auto-generated tasks
+    # Delete ALL existing auto-generated tasks for this plant to start fresh
     existing_tasks = session.exec(select(Task).where(Task.plant_id == plant.id, Task.is_user_override == False)).all()
     for t in existing_tasks:
         session.delete(t)
+    
+    # Flush deletions before adding new ones to avoid unique constraint issues if any
+    session.flush()
     
     def parse_months(m_str):
         if not m_str: return []
@@ -517,7 +565,8 @@ def sync_plant_tasks(plant: Plant, session: Session):
         if m.isdigit():
             session.add(Task(month=int(m), category="Snoeien", description=f"Snoeien aanbevolen voor {plant.common_name}", plant_id=plant.id))
     
-    session.commit()
+    # Do not commit here, let the caller handle it or use session.flush()
+    session.flush()
 
 # Task Endpoints (Calendar)
 @app.get("/tasks/")
@@ -526,10 +575,15 @@ def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, cur
 
     # Sync all plants first to ensure calendar is accurate
     user_plants = session.exec(select(Plant).where(Plant.garden_id.in_(accessible_ids))).all()
+    synced = False
     for plant in user_plants:
         task_count = session.exec(select(Task).where(Task.plant_id == plant.id)).all()
         if not task_count and (plant.flowering_months or plant.pruning_months):
             sync_plant_tasks(plant, session)
+            synced = True
+    
+    if synced:
+        session.commit()
 
     # For the table view, we often want ALL plants of the user, even those without tasks
     if not month:
@@ -562,47 +616,105 @@ def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, cur
         return result
 
     # Monthly view (list mode)
-    query = select(Task, Plant).join(Plant).join(Garden)
-    query = query.where(Garden.id.in_(accessible_ids))
+    # Use a cleaner join and selection
+    from sqlalchemy.orm import joinedload
+    query = select(Task).options(joinedload(Task.plant)).join(Plant)
+    query = query.where(Plant.garden_id.in_(accessible_ids))
+    
     if month:
         query = query.where(Task.month == month)
     if garden_id:
         query = query.where(Plant.garden_id == garden_id)
-    results = session.exec(query).all()
     
-    # Group by plant for monthly list view
-    grouped_results = {}
-    for task, plant in results:
-        if plant.id not in grouped_results:
-            plant_dict = plant.model_dump()
-            garden = session.get(Garden, plant.garden_id)
+    tasks_db = session.exec(query).all()
+    
+    # Group by plant
+    grouped = {}
+    for task in tasks_db:
+        if not task.plant:
+            continue
+            
+        p_id = task.plant_id
+        if p_id not in grouped:
+            plant_dict = task.plant.model_dump()
+            garden = session.get(Garden, task.plant.garden_id)
             if garden:
                 plant_dict["garden_name"] = garden.name
-            
-            grouped_results[plant.id] = {
+                
+            grouped[p_id] = {
                 "plant": plant_dict,
-                "categories": [task.category],
-                "descriptions": [task.description],
-                "id": task.id,
-                "plant_id": plant.id
+                "plant_id": p_id,
+                "tasks": []
             }
-        else:
-            if task.category not in grouped_results[plant.id]["categories"]:
-                grouped_results[plant.id]["categories"].append(task.category)
-            if task.description not in grouped_results[plant.id]["descriptions"]:
-                grouped_results[plant.id]["descriptions"].append(task.description)
-
-    formatted_tasks = []
-    for plant_id, data in grouped_results.items():
-        formatted_tasks.append({
-            "id": data["id"],
-            "plant_id": data["plant_id"],
-            "category": ", ".join(data["categories"]),
-            "description": " • ".join(data["descriptions"]),
-            "plant": data["plant"]
-        })
         
-    return formatted_tasks
+        # Deduplicate tasks within the same plant group
+        task_data = task.model_dump()
+        is_duplicate = any(
+            t["category"] == task_data["category"] and 
+            t["month"] == task_data["month"] and
+            t["description"] == task_data["description"]
+            for t in grouped[p_id]["tasks"]
+        )
+        if not is_duplicate:
+            grouped[p_id]["tasks"].append(task_data)
+        
+    return list(grouped.values())
+
+@app.post("/tasks/")
+def create_custom_task(task: Task, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    # Verify access to the plant
+    plant = session.get(Plant, task.plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+        
+    accessible_ids = get_accessible_garden_ids(current_user.id, session)
+    if plant.garden_id not in accessible_ids:
+        raise HTTPException(status_code=403, detail="Geen toegang tot deze tuin")
+        
+    task.is_user_override = True # Mark as manually added
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+@app.patch("/tasks/{task_id}/toggle")
+def toggle_task(task_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    # Check access via plant and garden
+    plant = session.get(Plant, task.plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+        
+    accessible_ids = get_accessible_garden_ids(current_user.id, session)
+    if plant.garden_id not in accessible_ids:
+        raise HTTPException(status_code=403, detail="Geen toegang tot deze tuin")
+        
+    task.is_completed = not task.is_completed
+    from datetime import datetime
+    task.completion_date = datetime.now().isoformat() if task.is_completed else None
+    
+    session.add(task)
+    session.commit()
+    session.refresh(task)
+    return task
+
+@app.delete("/tasks/{task_id}")
+def delete_task(task_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    task = session.get(Task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    plant = session.get(Plant, task.plant_id)
+    accessible_ids = get_accessible_garden_ids(current_user.id, session)
+    if plant.garden_id not in accessible_ids:
+        raise HTTPException(status_code=403, detail="Geen toegang")
+        
+    session.delete(task)
+    session.commit()
+    return {"message": "Task deleted"}
 
 # Image Upload
 @app.post("/plants/{plant_id}/image/")

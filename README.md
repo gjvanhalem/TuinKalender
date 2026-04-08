@@ -49,6 +49,27 @@ De applicatie is nu bereikbaar op:
 -   **Frontend**: `http://localhost:3000`
 -   **Backend API**: `http://localhost:8000` (Docs op `/docs`)
 
+### 🛠️ Database Migraties (Alembic)
+Dit project gebruikt Alembic voor database schema beheer. Bij het starten van de backend container worden migraties automatisch uitgevoerd.
+
+**Voor bestaande installaties:**
+Als je al een database hebt draaien (zonder Alembic), voer dan het volgende commando eenmalig uit in de backend container om de huidige status te markeren als 'up-to-date':
+```bash
+docker exec -it tuinkalender-backend-1 alembic stamp head
+```
+
+### 💾 Backups
+Er is een `backup.sh` script aanwezig in de root van het project. Dit script maakt kopieën van:
+1. De PostgreSQL database (via `pg_dump`).
+2. De SQLite database (indien aanwezig).
+3. De geüploade plantenfoto's.
+
+Voer het script handmatig uit of stel een cronjob in:
+```bash
+chmod +x backup.sh
+./backup.sh
+```
+
 ## ⚙️ Configuratie (.env)
 
 | Variabele | Omschrijving |
