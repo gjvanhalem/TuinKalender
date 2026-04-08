@@ -28,6 +28,24 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    
+    # Manual migration for garden.image_path if it doesn't exist
+    from sqlalchemy import text
+    with Session(engine) as session:
+        try:
+            session.execute(text("ALTER TABLE garden ADD COLUMN image_path VARCHAR"))
+            session.commit()
+            print("Successfully added image_path to garden table")
+        except Exception:
+            session.rollback()
+
+        try:
+            session.execute(text("ALTER TABLE \"user\" ADD COLUMN name VARCHAR"))
+            session.commit()
+            print("Successfully added name to user table")
+        except Exception:
+            session.rollback()
+            
     os.makedirs("images", exist_ok=True)
 
 @app.get("/")
@@ -48,6 +66,7 @@ def update_user_me(user_data: User, current_user: User = Depends(get_current_use
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
         
+    db_user.name = user_data.name
     db_user.trefle_token = user_data.trefle_token
     db_user.openrouter_key = user_data.openrouter_key
     db_user.openrouter_model = user_data.openrouter_model
@@ -124,6 +143,43 @@ def create_garden(garden: Garden, current_user: User = Depends(get_current_user)
     session.commit()
     session.refresh(garden)
     return garden
+
+@app.put("/gardens/{garden_id}", response_model=Garden)
+def update_garden(garden_id: int, garden_data: Garden, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    db_garden = session.get(Garden, garden_id)
+    if not db_garden:
+        raise HTTPException(status_code=404, detail="Garden not found")
+    if db_garden.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    garden_data_dict = garden_data.model_dump(exclude_unset=True)
+    for key, value in garden_data_dict.items():
+        if key != "user_id": # Don't allow changing owner
+            setattr(db_garden, key, value)
+            
+    session.add(db_garden)
+    session.commit()
+    session.refresh(db_garden)
+    return db_garden
+
+@app.post("/gardens/{garden_id}/image/")
+async def upload_garden_image(garden_id: int, file: UploadFile = File(...), current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    if not garden:
+        raise HTTPException(status_code=404, detail="Garden not found")
+    if garden.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    os.makedirs("images", exist_ok=True)
+    file_path = f"images/garden_{garden_id}_{file.filename}"
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    garden.image_path = file_path
+    session.add(garden)
+    session.commit()
+    session.refresh(garden)
+    return {"image_path": file_path}
 
 @app.get("/gardens/", response_model=List[dict])
 def read_gardens(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):

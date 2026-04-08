@@ -8,6 +8,7 @@ const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL || "googl
 
 export default function SettingsPage() {
   const { data: session } = useSession();
+  const [userName, setUserName] = useState("");
   const [trefleToken, setTrefleToken] = useState("");
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [openrouterModel, setOpenrouterModel] = useState(DEFAULT_MODEL);
@@ -30,6 +31,7 @@ export default function SettingsPage() {
       });
       if (response.ok) {
         const data = await response.json();
+        setUserName(data.name || "");
         setTrefleToken(data.trefle_token || "");
         setOpenrouterKey(data.openrouter_key || "");
         setOpenrouterModel(data.openrouter_model || DEFAULT_MODEL);
@@ -55,6 +57,7 @@ export default function SettingsPage() {
           Authorization: `Bearer ${session?.accessToken}`
         },
         body: JSON.stringify({
+          name: userName,
           trefle_token: trefleToken,
           openrouter_key: openrouterKey,
           openrouter_model: openrouterModel,
@@ -103,6 +106,35 @@ export default function SettingsPage() {
         )}
 
         <form onSubmit={saveSettings} className="space-y-8">
+          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
+            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">person</span>
+              Profiel
+            </h3>
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Naam</label>
+                <input
+                  type="text"
+                  placeholder="Uw volledige naam"
+                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">E-mail</label>
+                <input
+                  type="email"
+                  disabled
+                  className="w-full p-4 bg-surface-container-high/50 border-none rounded-xl text-on-surface-variant font-medium cursor-not-allowed opacity-70"
+                  value={session?.user?.email || ""}
+                />
+                <p className="text-[10px] text-outline px-1 mt-1">E-mailadres is gekoppeld aan uw Google-account.</p>
+              </div>
+            </div>
+          </div>
+
           <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
             <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">key</span>

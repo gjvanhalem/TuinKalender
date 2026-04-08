@@ -31,16 +31,20 @@ interface Task {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Client-side cache to persist data across tab switches within the session
+let plantsCache: Record<string, Plant[]> = {};
+let gardenCache: Record<string, any> = {};
+
 export default function GardenPlantsPage() {
   const { id: gardenId } = useParams();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
   const router = useRouter();
   
-  const [garden, setGarden] = useState<any | null>(null);
+  const [garden, setGarden] = useState<any | null>(gardenCache[gardenId as string] || null);
   const [allGardens, setAllGardens] = useState<any[]>([]);
   const [userSettings, setUserSettings] = useState<any | null>(null);
-  const [plants, setPlants] = useState<Plant[]>([]);
+  const [plants, setPlants] = useState<Plant[]>(plantsCache[gardenId as string] || []);
   
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false);
   const [isPlantInfoModalOpen, setIsPlantInfoModalOpen] = useState(false);
@@ -50,7 +54,7 @@ export default function GardenPlantsPage() {
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
   const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!plantsCache[gardenId as string]);
   const [showShareModal, setShowShareModal] = useState(false);
   const [sharedUsers, setSharedUsers] = useState<any[]>([]);
   const [shareEmail, setShareEmail] = useState("");
@@ -143,6 +147,9 @@ export default function GardenPlantsPage() {
         setAllGardens(data);
         const currentGarden = data.find((g: any) => g.id.toString() === gardenId);
         setGarden(currentGarden);
+        if (currentGarden) {
+          gardenCache[gardenId as string] = currentGarden;
+        }
       }
     } catch (error) {
       console.error("Error fetching garden details:", error);
@@ -150,12 +157,15 @@ export default function GardenPlantsPage() {
   };
 
   const fetchPlants = async () => {
+    if (!plantsCache[gardenId as string]) setIsLoading(true);
     try {
       const response = await fetch(`${API_URL}/plants/?garden_id=${gardenId}`, {
         headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
-      setPlants(Array.isArray(data) ? data : []);
+      const finalData = Array.isArray(data) ? data : [];
+      setPlants(finalData);
+      plantsCache[gardenId as string] = finalData;
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching plants:", error);
@@ -302,33 +312,40 @@ export default function GardenPlantsPage() {
       {/* Hero Section */}
       <section className="mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-          <div>
-            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Mijn Tuin</span>
-            <div className="flex items-center gap-4">
-              <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
-                {garden?.name || "Laden..."}
-              </h2>
-              {allGardens.length > 1 && (
-                <div className="relative">
-                  <select
-                    value={gardenId}
-                    onChange={(e) => router.push(`/gardens/${e.target.value}`)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  >
-                    {allGardens.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
-                  <span className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">swap_horiz</span>
-                </div>
+          <div className="flex items-center gap-6">
+            {garden?.image_path && (
+              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden border border-outline-variant/10 shrink-0 shadow-sm">
+                <img src={`${API_URL}/${garden.image_path}`} alt={garden.name} className="w-full h-full object-cover" />
+              </div>
+            )}
+            <div>
+              <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Mijn Tuin</span>
+              <div className="flex items-center gap-4">
+                <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
+                  {garden?.name || "Laden..."}
+                </h2>
+                {allGardens.length > 1 && (
+                  <div className="relative">
+                    <select
+                      value={gardenId}
+                      onChange={(e) => router.push(`/gardens/${e.target.value}`)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    >
+                      {allGardens.map((g) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                    <span className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">swap_horiz</span>
+                  </div>
+                )}
+              </div>
+              {garden?.location && (
+                <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-2 font-medium">
+                  <span className="material-symbols-outlined text-sm">location_on</span>
+                  {garden.location}
+                </p>
               )}
             </div>
-            {garden?.location && (
-              <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-2 font-medium">
-                <span className="material-symbols-outlined text-sm">location_on</span>
-                {garden.location}
-              </p>
-            )}
           </div>
           <div className="flex gap-3">
             {garden?.is_owner && (

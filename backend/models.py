@@ -11,6 +11,7 @@ class GardenAccess(SQLModel, table=True):
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, unique=True)
+    name: Optional[str] = None
     google_id: Optional[str] = Field(default=None, index=True, unique=True)
     is_active: bool = Field(default=True)
     is_admin: bool = Field(default=False)
@@ -28,6 +29,7 @@ class Garden(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: str
     location: Optional[str] = None
+    image_path: Optional[str] = None
     
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="gardens")

@@ -34,6 +34,8 @@ interface Task {
     scientific_name: string;
     garden_name?: string;
     garden_id?: number;
+    image_path?: string;
+    image_url?: string;
   };
 }
 
@@ -52,22 +54,31 @@ const categoryIcons: Record<string, string> = {
   "Oogsten": "eco",
 };
 
+// Client-side cache to persist data across tab switches within the session
+let calendarCache: {
+  tasks: Task[];
+  allYearTasks: any[];
+  gardens: any[];
+  userSettings: any | null;
+} | null = null;
+
 export default function CalendarPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1-12
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [allYearTasks, setAllYearTasks] = useState<any[]>([]);
-  const [gardens, setGardens] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>(calendarCache?.tasks || []);
+  const [allYearTasks, setAllYearTasks] = useState<any[]>(calendarCache?.allYearTasks || []);
+  const [gardens, setGardens] = useState<any[]>(calendarCache?.gardens || []);
   const [selectedGardenId, setSelectedGardenId] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [viewMode, setViewMode] = useState<'list' | 'table'>('list');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!calendarCache);
   
   const [isPlantInfoModalOpen, setIsPlantInfoModalOpen] = useState(false);
   const [isPlantModalOpen, setIsPlantModalOpen] = useState(false);
   const [activePlant, setActivePlant] = useState<Partial<Plant> | null>(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [userSettings, setUserSettings] = useState<any | null>(null);
+  const [userSettings, setUserSettings] = useState<any | null>(calendarCache?.userSettings || null);
   const [adminPlantData, setAdminPlantData] = useState<any | null>(null);
   const [movingPlant, setMovingPlant] = useState<Plant | null>(null);
 
@@ -93,7 +104,10 @@ export default function CalendarPage() {
         headers: { Authorization: `Bearer ${session?.accessToken}` },
       });
       if (response.ok) {
-        setUserSettings(await response.json());
+        const data = await response.json();
+        setUserSettings(data);
+        if (!calendarCache) calendarCache = { tasks: [], allYearTasks: [], gardens: [], userSettings: null };
+        calendarCache.userSettings = data;
       }
     } catch (error) {}
   };
@@ -196,7 +210,10 @@ export default function CalendarPage() {
         headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
-      setAllYearTasks(Array.isArray(data) ? data : []);
+      const finalData = Array.isArray(data) ? data : [];
+      setAllYearTasks(finalData);
+      if (!calendarCache) calendarCache = { tasks: [], allYearTasks: [], gardens: [], userSettings: null };
+      calendarCache.allYearTasks = finalData;
     } catch (error) {
       console.error("Error fetching all year tasks:", error);
     }
@@ -208,7 +225,10 @@ export default function CalendarPage() {
         headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
-      setGardens(Array.isArray(data) ? data : []);
+      const finalData = Array.isArray(data) ? data : [];
+      setGardens(finalData);
+      if (!calendarCache) calendarCache = { tasks: [], allYearTasks: [], gardens: [], userSettings: null };
+      calendarCache.gardens = finalData;
     } catch (error) {
       console.error("Error fetching gardens:", error);
       setGardens([]);
@@ -216,7 +236,7 @@ export default function CalendarPage() {
   };
 
   const fetchTasks = async () => {
-    setIsLoading(true);
+    if (!calendarCache) setIsLoading(true);
     try {
       let url = `${API_URL}/tasks/?month=${currentMonth}`;
       if (selectedGardenId !== "all") {
@@ -226,7 +246,10 @@ export default function CalendarPage() {
         headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       const data = await response.json();
-      setTasks(Array.isArray(data) ? data : []);
+      const finalData = Array.isArray(data) ? data : [];
+      setTasks(finalData);
+      if (!calendarCache) calendarCache = { tasks: [], allYearTasks: [], gardens: [], userSettings: null };
+      calendarCache.tasks = finalData;
       setIsLoading(false);
     } catch (error) {
       console.error("Error fetching tasks:", error);
@@ -292,6 +315,19 @@ export default function CalendarPage() {
             </select>
           </div>
 
+          <div className="w-full md:w-auto flex items-center gap-2 bg-surface-container-high px-4 py-2 rounded-xl">
+            <span className="material-symbols-outlined text-outline">filter_list</span>
+            <select 
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="bg-transparent border-none focus:ring-0 text-sm font-bold text-on-surface-variant outline-none pr-8 cursor-pointer w-full"
+            >
+              <option value="all">Alle Activiteiten</option>
+              <option value="Bloei">Alleen Bloei</option>
+              <option value="Snoeien">Alleen Snoeien</option>
+            </select>
+          </div>
+
           <div className={`flex-grow flex items-center justify-between bg-surface-container-low px-6 py-3 rounded-2xl border border-outline-variant/10 ${viewMode === 'table' ? 'opacity-30 pointer-events-none' : ''}`}>
             <button onClick={prevMonth} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-all">
               <span className="material-symbols-outlined">chevron_left</span>
@@ -314,41 +350,62 @@ export default function CalendarPage() {
             ))}
           </div>
         ) : viewMode === 'list' ? (
-          tasks.length === 0 ? (
-            <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
-              <span className="material-symbols-outlined text-outline text-6xl mb-4">sunny</span>
-              <p className="text-on-surface-variant font-medium">Geen taken voor {months[currentMonth - 1]}.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {tasks.map((task) => {
-                const categories = task.category.split(", ");
-                return (
-                  <div key={task.id} className="group bg-surface-container-low p-6 rounded-xl border border-outline-variant/5 hover:bg-surface-container-high transition-all flex flex-col md:flex-row items-center gap-6 cursor-pointer" onClick={() => fetchPlantDetails(task.plant_id)}>
-                    <div className="flex gap-2">
-                      {categories.map((cat, idx) => (
-                        <div key={idx} className="w-14 h-14 rounded-2xl bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
-                          <span className="material-symbols-outlined text-2xl">{categoryIcons[cat.trim()] || 'leaf'}</span>
+          (() => {
+            const filteredTasks = tasks.filter(task => 
+              selectedCategory === "all" || task.category.includes(selectedCategory)
+            );
+
+            return filteredTasks.length === 0 ? (
+              <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
+                <span className="material-symbols-outlined text-outline text-6xl mb-4">sunny</span>
+                <p className="text-on-surface-variant font-medium">Geen {selectedCategory !== "all" ? selectedCategory.toLowerCase() : 'taken'} voor {months[currentMonth - 1]}.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredTasks.map((task) => {
+                  const categories = task.category.split(", ").filter(cat => selectedCategory === "all" || cat.trim() === selectedCategory);
+                  return (
+                    <div key={task.id} className="group bg-surface-container-low p-6 rounded-xl border border-outline-variant/5 hover:bg-surface-container-high transition-all flex flex-col md:flex-row items-center gap-6 cursor-pointer" onClick={() => fetchPlantDetails(task.plant_id)}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-24 h-24 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 border border-outline-variant/10 relative">
+                          {task.plant.image_path || task.plant.image_url ? (
+                            <img 
+                              src={task.plant.image_path ? `${API_URL}/${task.plant.image_path}` : task.plant.image_url} 
+                              alt={task.plant.common_name} 
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-outline">
+                              <span className="material-symbols-outlined text-3xl">image</span>
+                            </div>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                    <div className="flex-grow text-center md:text-left">
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
-                        <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{task.plant.common_name}</h4>
-                        <span className="text-[10px] bg-outline/10 text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{task.plant.garden_name}</span>
+                        <div className="flex gap-2">
+                          {categories.map((cat, idx) => (
+                            <div key={idx} className="w-14 h-14 rounded-2xl bg-surface-container-lowest flex items-center justify-center text-primary shadow-sm">
+                              <span className="material-symbols-outlined text-2xl">{categoryIcons[cat.trim()] || 'leaf'}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <p className="text-on-surface-variant font-medium">{task.description}</p>
+                      <div className="flex-grow text-center md:text-left">
+                        <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
+                          <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{task.plant.common_name}</h4>
+                          <span className="text-[10px] bg-outline/10 text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{task.plant.garden_name}</span>
+                        </div>
+                        <p className="text-on-surface-variant font-medium">{task.description}</p>
+                      </div>
+                      <div className="shrink-0 flex items-center gap-3">
+                        <Link href={`/gardens/${task.plant.garden_id}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary/10 text-primary transition-all">
+                          <span className="material-symbols-outlined">open_in_new</span>
+                        </Link>
+                      </div>
                     </div>
-                    <div className="shrink-0 flex items-center gap-3">
-                      <Link href={`/gardens/${task.plant.garden_id}`} onClick={(e) => e.stopPropagation()} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-primary/10 text-primary transition-all">
-                        <span className="material-symbols-outlined">open_in_new</span>
-                      </Link>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
+                  );
+                })}
+              </div>
+            );
+          })()
         ) : (
           /* Table View */
           <div className="bg-surface-container-low rounded-xl border border-outline-variant/10 overflow-hidden editorial-shadow">
@@ -365,29 +422,56 @@ export default function CalendarPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
-                  {allYearTasks.map((item: any) => (
-                    <tr key={item.plant_id} className="hover:bg-surface-container-high/50 transition-colors cursor-pointer" onClick={() => fetchPlantDetails(item.plant_id)}>
-                      <td className="p-6">
-                        <div className="flex flex-col">
-                          <span className="font-bold text-on-surface">{item.plant.common_name}</span>
-                          <span className="text-[10px] text-outline italic">{item.plant.scientific_name}</span>
-                        </div>
-                      </td>
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => {
-                        const monthTasks = (item.tasks || []).filter((t: any) => t.month === m);
-                        const hasPruning = monthTasks.some((t: any) => t.category.includes("Snoeien"));
-                        const hasBlooming = monthTasks.some((t: any) => t.category.includes("Bloei"));
-                        return (
-                          <td key={m} className={`p-2 text-center ${m === new Date().getMonth() + 1 ? 'bg-primary/5' : ''}`}>
-                            <div className="flex flex-col items-center justify-center gap-1 min-h-[40px]">
-                              {hasBlooming && <span className="material-symbols-outlined text-primary text-sm">filter_vintage</span>}
-                              {hasPruning && <span className="material-symbols-outlined text-secondary text-sm">content_cut</span>}
+                  {allYearTasks
+                    .filter(item => {
+                      if (selectedCategory === "all") return true;
+                      return (item.tasks || []).some((t: any) => t.category.includes(selectedCategory));
+                    })
+                    .map((item: any) => (
+                      <tr key={item.plant_id} className="group hover:bg-surface-container-high/50 transition-colors cursor-pointer" onClick={() => fetchPlantDetails(item.plant_id)}>
+                        <td className="p-6">
+                          <div className="flex items-center gap-4">
+                            <div className="w-14 h-14 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 border border-outline-variant/10 relative">
+                              {item.plant.image_path || item.plant.image_url ? (
+                                <img 
+                                  src={item.plant.image_path ? `${API_URL}/${item.plant.image_path}` : item.plant.image_url} 
+                                  alt={item.plant.common_name} 
+                                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-outline">
+                                  <span className="material-symbols-outlined text-2xl">image</span>
+                                </div>
+                              )}
                             </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                            <div className="flex flex-col">
+                              <span className="font-bold text-on-surface">{item.plant.common_name}</span>
+                              <span className="text-[10px] text-outline italic">{item.plant.scientific_name}</span>
+                              <span className="text-[10px] bg-outline/10 text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase tracking-widest mt-1 w-fit">
+                                {item.plant.garden_name}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => {
+                          const monthTasks = (item.tasks || []).filter((t: any) => {
+                            if (t.month !== m) return false;
+                            if (selectedCategory !== "all" && !t.category.includes(selectedCategory)) return false;
+                            return true;
+                          });
+                          const hasPruning = monthTasks.some((t: any) => t.category.includes("Snoeien"));
+                          const hasBlooming = monthTasks.some((t: any) => t.category.includes("Bloei"));
+                          return (
+                            <td key={m} className={`p-2 text-center ${m === new Date().getMonth() + 1 ? 'bg-primary/5' : ''}`}>
+                              <div className="flex flex-col items-center justify-center gap-1 min-h-[40px]">
+                                {hasBlooming && <span className="material-symbols-outlined text-primary text-sm">filter_vintage</span>}
+                                {hasPruning && <span className="material-symbols-outlined text-secondary text-sm">content_cut</span>}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </div>

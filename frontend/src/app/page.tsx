@@ -1,14 +1,70 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { Leaf, Plus, Search, Calendar, Map, ArrowRight, LogIn } from 'lucide-react';
 import Link from 'next/link';
 import { useSession, signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// Cache to prevent dashboard flashing
+let dashboardCache: { gardenCount: number; plantCount: number; userName?: string } | null = null;
+
 export default function Home() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+
+  const [stats, setStats] = useState({ 
+    gardenCount: dashboardCache?.gardenCount || 0, 
+    plantCount: dashboardCache?.plantCount || 0 
+  });
+  const [userName, setUserName] = useState(dashboardCache?.userName || "");
+
+  useEffect(() => {
+    if (session) {
+      fetchStats();
+      fetchUserData();
+    }
+  }, [session]);
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch(`${API_URL}/users/me`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const name = data.name || session?.user?.name?.split(' ')[0] || "Tuinier";
+        setUserName(name);
+        if (dashboardCache) dashboardCache.userName = name;
+      }
+    } catch (error) {}
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/gardens/`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+      });
+      if (response.ok) {
+        const gardens = await response.json();
+        const gardenCount = gardens.length;
+        const plantCount = gardens.reduce((sum: number, g: any) => sum + (g.plant_count || 0), 0);
+        
+        const newStats = { gardenCount, plantCount };
+        setStats(newStats);
+        if (!dashboardCache) dashboardCache = { ...newStats };
+        else {
+           dashboardCache.gardenCount = gardenCount;
+           dashboardCache.plantCount = plantCount;
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+    }
+  };
 
   return (
     <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
@@ -24,7 +80,7 @@ export default function Home() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">
-              {session ? `Welkom terug, ${session.user?.name?.split(' ')[0]}` : 'Je Groene Oase'}
+              {session ? `Welkom terug, ${userName}` : 'Je Groene Oase'}
             </span>
             <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
               {session ? 'Dashboard' : 'TuinKalender'}
@@ -111,11 +167,11 @@ export default function Home() {
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-on-surface-variant">Actieve tuinen</span>
-                <span className="text-sm font-bold text-primary">0</span>
+                <span className="text-sm font-bold text-primary">{stats.gardenCount}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-on-surface-variant">Totaal planten</span>
-                <span className="text-sm font-bold text-secondary">0</span>
+                <span className="text-sm font-bold text-secondary">{stats.plantCount}</span>
               </div>
             </div>
           </div>
@@ -124,7 +180,11 @@ export default function Home() {
             <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">potted_plant</span>
             <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">Tip</h5>
             <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
-              "Begin met het toevoegen van je eerste tuin om je plantencollectie te organiseren."
+              {stats.gardenCount === 0 
+                ? "Begin met het toevoegen van je eerste tuin om je plantencollectie te organiseren."
+                : stats.plantCount === 0
+                ? "Voeg je eerste planten toe aan je tuin om je kalender te vullen."
+                : "Bekijk de kalender om te zien welke planten deze maand aandacht nodig hebben."}
             </p>
           </div>
         </div>
