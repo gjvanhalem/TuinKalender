@@ -6,6 +6,7 @@ import { Link } from '@/i18n/routing';
 import { useSession, signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import Logo from '@/components/Logo';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -84,13 +85,16 @@ export default function Home() {
         )}
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-          <div>
-            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">
-              {session ? t('welcome', { name: userName }) : t('guestWelcome')}
-            </span>
-            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
-              {session ? t('dashboard') : t('appName')}
-            </h2>
+          <div className="flex items-center gap-6">
+            {!session && <Logo size={80} className="hidden md:block" />}
+            <div>
+              <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">
+                {session ? t('welcome', { name: userName }) : t('guestWelcome')}
+              </span>
+              <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
+                {session ? t('dashboard') : t('appName')}
+              </h2>
+            </div>
           </div>
           {session ? (
             <div className="flex flex-col sm:flex-row gap-3">

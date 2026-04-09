@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { useTranslations, useLocale } from "next-intl";
+import Logo from "./Logo";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -64,7 +65,7 @@ export default function Navbar() {
       {/* TopAppBar */}
       <header className="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl flex justify-between items-center px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px' }}>park</span>
+          <Logo size={32} />
           <h1 className="font-headline font-bold tracking-tight text-2xl text-primary">{t('appName')}</h1>
         </Link>
         <div className="flex items-center gap-4">

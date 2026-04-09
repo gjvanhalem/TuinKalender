@@ -16,6 +16,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Plan-te",
   description: "Jouw persoonlijke Plan-te",
+  icons: {
+    icon: '/icon.svg',
+  },
 };
 
 export default async function LocaleLayout({
