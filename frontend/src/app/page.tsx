@@ -87,10 +87,16 @@ export default function Home() {
             </h2>
           </div>
           {session ? (
-            <Link href="/gardens" className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center">
-              <span className="material-symbols-outlined">potted_plant</span>
-              <span>Bekijk Tuinen</span>
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link href="/calendar" className="flex items-center gap-2 bg-secondary-container text-on-secondary-container px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center">
+                <span className="material-symbols-outlined">calendar_month</span>
+                <span>Bekijk Kalender</span>
+              </Link>
+              <Link href="/gardens" className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center">
+                <span className="material-symbols-outlined">potted_plant</span>
+                <span>Bekijk Tuinen</span>
+              </Link>
+            </div>
           ) : (
             <button 
               onClick={() => signIn('google')}
