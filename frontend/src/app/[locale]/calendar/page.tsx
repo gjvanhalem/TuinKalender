@@ -340,6 +340,7 @@ export default function CalendarPage() {
 
   const nextMonth = () => setCurrentMonth((prev) => (prev % 12) + 1);
   const prevMonth = () => setCurrentMonth((prev) => (prev === 1 ? 12 : prev - 1));
+  const jumpToToday = () => setCurrentMonth(new Date().getMonth() + 1);
 
   if (status === "loading") {
     return (
@@ -412,8 +413,14 @@ export default function CalendarPage() {
             <button onClick={prevMonth} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-all">
               <span className="material-symbols-outlined">chevron_left</span>
             </button>
-            <div className="text-center">
-              <span className="text-2xl font-bold text-on-surface">{monthsList[currentMonth - 1]}</span>
+            <div className="text-center flex flex-col items-center">
+              <span className="text-2xl font-bold text-on-surface leading-tight">{monthsList[currentMonth - 1]}</span>
+              <button 
+                onClick={jumpToToday}
+                className={`text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary-container transition-all ${currentMonth === new Date().getMonth() + 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+              >
+                {tCalendar('jumpToToday')}
+              </button>
             </div>
             <button onClick={nextMonth} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-all">
               <span className="material-symbols-outlined">chevron_right</span>

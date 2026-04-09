@@ -180,6 +180,7 @@
     "allCategories": "Toutes les catégories",
     "list": "Liste",
     "table": "Tableau",
+    "jumpToToday": "Ce mois-ci",
     "noTasks": "Aucune {category} pour {month}."
   },
   "Home": {

@@ -180,6 +180,7 @@
     "allCategories": "Alle categorieën",
     "list": "Lijst",
     "table": "Tabel",
+    "jumpToToday": "Deze maand",
     "noTasks": "Geen {category} voor {month}."
   },
   "Home": {

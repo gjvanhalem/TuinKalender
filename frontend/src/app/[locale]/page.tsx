@@ -131,7 +131,7 @@ export default function Home() {
 
       {/* Feature Section / Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        <div className="md:col-span-8 space-y-6">
+        <div className={`${session ? 'md:col-span-8' : 'md:col-span-12'} space-y-6`}>
           {session && gardens.length > 0 && (
             <div className="space-y-4 mb-8">
               <div className="flex items-center justify-between px-2">
@@ -221,33 +221,35 @@ export default function Home() {
         </div>
 
         {/* Sidebar / Stats Area */}
-        <div className="md:col-span-4 space-y-6">
-          <div className="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-outline-variant/5">
-            <h5 className="font-headline text-lg font-bold mb-4">{tHome('gardenStatus')}</h5>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-on-surface-variant">{tHome('activeGardens')}</span>
-                <span className="text-sm font-bold text-primary">{stats.gardenCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-on-surface-variant">{tHome('totalPlants')}</span>
-                <span className="text-sm font-bold text-secondary">{stats.plantCount}</span>
+        {session && (
+          <div className="md:col-span-4 space-y-6">
+            <div className="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-outline-variant/5">
+              <h5 className="font-headline text-lg font-bold mb-4">{tHome('gardenStatus')}</h5>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-on-surface-variant">{tHome('activeGardens')}</span>
+                  <span className="text-sm font-bold text-primary">{stats.gardenCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-on-surface-variant">{tHome('totalPlants')}</span>
+                  <span className="text-sm font-bold text-secondary">{stats.plantCount}</span>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="bg-primary-container/10 rounded-lg p-6 relative overflow-hidden">
-            <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">potted_plant</span>
-            <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">{tHome('tip')}</h5>
-            <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
-              {stats.gardenCount === 0 
-                ? tHome('tips.noGardens')
-                : stats.plantCount === 0
-                ? tHome('tips.noPlants')
-                : tHome('tips.regular')}
-            </p>
+            <div className="bg-primary-container/10 rounded-lg p-6 relative overflow-hidden">
+              <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">potted_plant</span>
+              <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">{tHome('tip')}</h5>
+              <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
+                {stats.gardenCount === 0 
+                  ? tHome('tips.noGardens')
+                  : stats.plantCount === 0
+                  ? tHome('tips.noPlants')
+                  : tHome('tips.regular')}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </main>
   );
