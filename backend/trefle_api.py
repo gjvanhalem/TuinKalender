@@ -1,5 +1,8 @@
 import os
 import requests
+import socket
+import ipaddress
+from urllib.parse import urlparse
 from typing import List, Dict, Optional, Any
 from dotenv import load_dotenv
 
@@ -121,13 +124,58 @@ def map_month_to_int(month: Any) -> Optional[int]:
                 return m
     return None
 
+def is_safe_url(url: str) -> bool:
+    """
+    Check if a URL is safe for server-side requests.
+    Prevents SSRF by blocking non-HTTP(S) protocols and private/loopback IP addresses.
+    """
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False
+        
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+            
+        # 1. Check for literal IP addresses in hostname
+        try:
+            ip_obj = ipaddress.ip_address(hostname)
+            if ip_obj.is_private or ip_obj.is_loopback:
+                return False
+        except ValueError:
+            # Not an IP literal, continue to DNS resolution
+            pass
+
+        # 2. Resolve hostname to IP to check for private ranges
+        # We use socket.getaddrinfo to get all possible IPs.
+        addr_info = socket.getaddrinfo(hostname, None)
+        for family, kind, proto, canonname, sockaddr in addr_info:
+            ip = sockaddr[0]
+            ip_obj = ipaddress.ip_address(ip)
+            if ip_obj.is_private or ip_obj.is_loopback:
+                return False
+            
+        return True
+    except Exception:
+        return False
+
 def download_image(url: str, plant_id: int) -> Optional[str]:
     """Download image from URL and save it locally."""
+    if not url or not is_safe_url(url):
+        print(f"Blocked unsafe or invalid URL: {url}")
+        return None
+        
     try:
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=10)
         if response.status_code == 200:
             os.makedirs("images", exist_ok=True)
-            file_name = f"images/trefle_{plant_id}_{os.path.basename(url).split('?')[0]}"
+            # Use only the filename part to prevent path traversal
+            safe_basename = os.path.basename(urlparse(url).path).split('?')[0]
+            if not safe_basename:
+                safe_basename = f"plant_{plant_id}.jpg"
+            
+            file_name = f"images/trefle_{plant_id}_{safe_basename}"
             with open(file_name, 'wb') as f:
                 for chunk in response.iter_content(1024):
                     f.write(chunk)
