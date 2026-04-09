@@ -1,100 +1,106 @@
 # 🌿 Plan-te
 
-Plan-te is een moderne, containerized webapplicatie waarmee je jouw tuin en planten moeiteloos kunt beheren. Met integraties van Trefle.io voor plantgegevens en OpenRouter voor slimme AI-tuinadviezen, heb je altijd een persoonlijk jaaroverzicht van wat er in jouw tuin moet gebeuren.
+Plan-te is a modern, containerized web application that helps you manage your garden and plants effortlessly. With integrations from Trefle.io for plant data, OpenWeatherMap for local climate insights, and OpenRouter for smart AI gardening advice, you'll always have a personalized yearly overview of what needs to happen in your garden.
 
-![Plan-te Hero](frontend/public/hero-preview.png) *(Voeg hier later een screenshot toe)*
+![Plan-te Hero](frontend/public/hero-preview.png) *(Screenshot coming soon)*
 
-## ✨ Kenmerken
+## ✨ Features
 
--   **Multi-user Support**: Log veilig in met je Google-account. Elke gebruiker heeft zijn eigen tuinen en planten.
--   **Interactieve Tuinbeheer**: Maak meerdere tuinen aan en bepaal de locatie via een interactieve Google Maps kiezer of je huidige GPS-locatie.
--   **Trefle.io Integratie**: Zoek in de wereldwijde database van Trefle naar officiële plantgegevens, wetenschappelijke namen en foto's.
--   **AI Tuinadvies (OpenRouter)**: Laat AI automatisch de bloeimaanden, snoeimaanden en verzorgingstips voor je planten invullen.
--   **Flexibele Weergave**: Kies tussen een visuele **Kaartweergave** (grid) met grote foto's of een compacte **Tabelweergave** voor grote collecties.
--   **Slimme Kalender**: 
-    -   Maandoverzicht met iconen voor specifieke taken (Snoeien, Bloei, Planten).
-    -   Interactief **Jaaroverzicht** (tabel) voor al je planten in één oogopslag.
-    -   Filteren op specifieke tuinen.
--   **Persistentie**: Al je gegevens en geüploade foto's worden veilig opgeslagen op je eigen server via Docker volumes.
+-   **Multi-user Support**: Secure login with your Google account. Each user manages their own gardens and plants.
+-   **Interactive Garden Management**: Create multiple gardens and set their location via an interactive Google Maps picker or your current GPS location.
+-   **Trefle.io Integration**: Search the global Trefle database for official plant data, scientific names, and photos.
+-   **AI Gardening Advice (OpenRouter/OpenAI)**: 
+    -   Automatically fill in flowering months, pruning months, and care tips for your plants.
+    -   Get dynamic, weather-aware garden advice based on your current plant collection and local forecast.
+-   **Weather Integration**: Real-time weather data and 5-day forecasts via OpenWeatherMap to help you plan your gardening activities.
+-   **Multi-language Support**: Fully localized interface available in **English**, **Dutch**, and **French**.
+-   **Flexible Views**: Switch between a visual **Gallery View** (grid) with large photos or a compact **Table View** for large collections.
+-   **Smart Calendar**: 
+    -   Monthly overview with icons for specific tasks (Pruning, Flowering, Planting).
+    -   Interactive **Yearly Overview** (table) for all your plants at a glance.
+    -   Filter by specific gardens.
+-   **Persistence**: All your data and uploaded photos are securely stored on your own server via Docker volumes.
 
-## 🚀 Snel aan de slag
+## 🚀 Quick Start
 
-### 1. Vereisten
--   [Docker](https://www.docker.com/) en Docker Compose geïnstalleerd.
--   [Google Cloud Console](https://console.cloud.google.com/) OAuth 2.0 Client ID (voor login).
--   [Trefle.io API Token](https://trefle.io/) (gratis).
--   *(Optioneel)* [OpenRouter API Key](https://openrouter.ai/) (voor AI suggesties).
--   *(Optioneel)* [Google Maps API Key](https://console.cloud.google.com/) (voor de locatiekiezer).
+### 1. Prerequisites
+-   [Docker](https://www.docker.com/) and Docker Compose installed.
+-   [Google Cloud Console](https://console.cloud.google.com/) OAuth 2.0 Client ID (for login).
+-   [Trefle.io API Token](https://trefle.io/) (free).
+-   *(Optional)* [OpenRouter API Key](https://openrouter.ai/) or OpenAI Key (for AI suggestions).
+-   *(Optional)* [OpenWeatherMap API Key](https://openweathermap.org/api) (for weather features).
+-   *(Optional)* [Google Maps API Key](https://console.cloud.google.com/) (for the location picker).
 
-### 2. Installatie
-Kloon de repository:
+### 2. Installation
+Clone the repository:
 ```bash
-git clone https://github.com/jouwgebruikersnaam/TuinKalender.git
+git clone https://github.com/yourusername/TuinKalender.git
 cd TuinKalender
 ```
 
-Maak een `.env` bestand aan op basis van het voorbeeld:
+Create a `.env` file based on the example:
 ```bash
 cp .env.example .env
 ```
-Vul de benodigde API keys en secrets in het `.env` bestand in.
+Fill in the required API keys and secrets in the `.env` file.
 
-### 3. Starten
-Start de applicatie met Docker Compose:
+### 3. Launch
+Start the application with Docker Compose:
 ```bash
 docker-compose up -d --build
 ```
 
-De applicatie is nu bereikbaar op:
+The application is now accessible at:
 -   **Frontend**: `http://localhost:3000`
--   **Backend API**: `http://localhost:8000` (Docs op `/docs`)
+-   **Backend API**: `http://localhost:8000` (Docs at `/docs`)
 
-### 🛠️ Database Migraties (Alembic)
-Dit project gebruikt Alembic voor database schema beheer. Bij het starten van de backend container worden migraties automatisch uitgevoerd.
+### 🛠️ Database Migrations (Alembic)
+This project uses Alembic for database schema management. Migrations are automatically applied when the backend container starts.
 
-**Voor bestaande installaties:**
-Als je al een database hebt draaien (zonder Alembic), voer dan het volgende commando eenmalig uit in de backend container om de huidige status te markeren als 'up-to-date':
+**For existing installations:**
+If you already have a database running (without Alembic), run the following command once in the backend container to mark the current state as 'up-to-date':
 ```bash
 docker exec -it tuinkalender-backend-1 alembic stamp head
 ```
 
 ### 💾 Backups
-Er is een `backup.sh` script aanwezig in de root van het project. Dit script maakt kopieën van:
-1. De PostgreSQL database (via `pg_dump`).
-2. De SQLite database (indien aanwezig).
-3. De geüploade plantenfoto's.
+A `backup.sh` script is available in the root of the project. This script creates copies of:
+1. The PostgreSQL database (via `pg_dump`).
+2. The SQLite database (if present).
+3. Uploaded plant photos.
 
-Voer het script handmatig uit of stel een cronjob in:
+Run the script manually or set up a cron job:
 ```bash
 chmod +x backup.sh
 ./backup.sh
 ```
 
-## ⚙️ Configuratie (.env)
+## ⚙️ Configuration (.env)
 
-| Variabele | Omschrijving |
+| Variable | Description |
 | :--- | :--- |
-| `GOOGLE_CLIENT_ID` | OAuth Client ID van Google Cloud Console |
-| `GOOGLE_CLIENT_SECRET` | OAuth Client Secret van Google Cloud Console |
-| `NEXTAUTH_SECRET` | Willekeurige string voor sessiebeveiliging |
-| `TREFLE_API_TOKEN` | Je persoonlijke token van Trefle.io |
-| `OPENROUTER_API_KEY` | *(Optioneel)* Key voor AI-integratie |
-| `GOOGLE_MAPS_API_KEY` | *(Optioneel)* Systeem-key voor kaartfuncties |
+| `GOOGLE_CLIENT_ID` | OAuth Client ID from Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | OAuth Client Secret from Google Cloud Console |
+| `NEXTAUTH_SECRET` | Random string for session security |
+| `TREFLE_API_TOKEN` | Your personal token from Trefle.io |
+| `OPENROUTER_API_KEY` | *(Optional)* Key for AI integration |
+| `OPENWEATHER_API_KEY` | *(Optional)* Key for weather data |
+| `GOOGLE_MAPS_API_KEY` | *(Optional)* System key for map features |
 
 ## 🏗️ Tech Stack
 
--   **Frontend**: [Next.js](https://nextjs.org/) (React), Tailwind CSS, Lucide Icons.
+-   **Frontend**: [Next.js 14](https://nextjs.org/) (React), Tailwind CSS, Lucide Icons, `next-intl`.
 -   **Backend**: [FastAPI](https://fastapi.tiangolo.com/) (Python), SQLModel (SQLAlchemy).
 -   **Database**: [PostgreSQL](https://www.postgresql.org/).
--   **Containerisatie**: [Docker](https://www.docker.com/).
+-   **Containerization**: [Docker](https://www.docker.com/).
 
 ## 📱 Homeserver Deployment
 
-Voor gebruik op een homeserver (bijv. Synology, Unraid of een Raspberry Pi):
-1.  Zorg dat `NEXTAUTH_URL` en `NEXT_PUBLIC_API_URL` in je `.env` wijzen naar het IP-adres of domein van je server.
-2.  Voeg deze URL's toe aan de "Authorized Redirect URIs" in je Google Cloud Console.
-3.  Gebruik een reverse proxy (zoals Nginx Proxy Manager) voor SSL/HTTPS ondersteuning.
+For use on a homeserver (e.g., Synology, Unraid, or Raspberry Pi):
+1.  Ensure `NEXTAUTH_URL` and `NEXT_PUBLIC_API_URL` in your `.env` point to the IP address or domain of your server.
+2.  Add these URLs to the "Authorized Redirect URIs" in your Google Cloud Console.
+3.  Use a reverse proxy (like Nginx Proxy Manager) for SSL/HTTPS support.
 
 ---
 
-*Gemaakt met passie voor de tuin. Aangedreven door [Trefle.io](https://trefle.io/).*
+*Created with passion for gardening. Powered by [Trefle.io](https://trefle.io/).*
