@@ -16,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 import shutil
 import os
 
-app = FastAPI(title="TuinKalender API")
+app = FastAPI(title="Plan-te API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,7 +34,7 @@ def on_startup():
 
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to TuinKalender API"}
+    return {"message": "Welcome to Plan-te API"}
 
 app.mount("/images", StaticFiles(directory="images"), name="images")
 
@@ -86,30 +86,30 @@ def admin_get_users(current_user: User = Depends(get_current_user), session: Ses
 @app.post("/admin/users/invite")
 def admin_invite_user(user_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Alleen voor administrators")
+        raise HTTPException(status_code=403, detail="Only for administrators")
     
     email = user_data.get("email")
     if not email:
-        raise HTTPException(status_code=400, detail="E-mailadres is verplicht")
+        raise HTTPException(status_code=400, detail="Email address is required")
     
     # Check if user already exists
     existing = session.exec(select(User).where(User.email == email)).first()
     if existing:
-        return {"message": "Gebruiker bestaat al"}
+        return {"message": "User already exists"}
     
     new_user = User(email=email, is_active=True, is_admin=False)
     session.add(new_user)
     session.commit()
-    return {"message": f"Gebruiker {email} toegevoegd aan de toegangslijst."}
+    return {"message": f"User {email} added to the access list."}
 
 @app.patch("/admin/users/{user_id}")
 def admin_update_user(user_id: int, data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Alleen voor administrators")
+        raise HTTPException(status_code=403, detail="Only for administrators")
         
     db_user = session.get(User, user_id)
     if not db_user:
-        raise HTTPException(status_code=404, detail="Gebruiker niet gevonden")
+        raise HTTPException(status_code=404, detail="User not found")
         
     if "is_active" in data:
         db_user.is_active = data["is_active"]
@@ -118,7 +118,7 @@ def admin_update_user(user_id: int, data: dict, current_user: User = Depends(get
         
     session.add(db_user)
     session.commit()
-    return {"message": "Gebruiker bijgewerkt"}
+    return {"message": "User updated"}
 
 # Garden Endpoints
 @app.post("/gardens/", response_model=Garden)
@@ -187,7 +187,7 @@ def read_gardens(current_user: User = Depends(get_current_user), session: Sessio
         plants = session.exec(select(Plant).where(Plant.garden_id == garden.id)).all()
         garden_dict["plant_count"] = len(plants)
         garden_dict["is_owner"] = garden.user_id == current_user.id
-        garden_dict["owner_email"] = garden.user.email if garden.user else "Onbekend"
+        garden_dict["owner_email"] = garden.user.email if garden.user else "Unknown"
         
         # Create a summary
         plant_names = [p.common_name for p in plants if p.common_name]
@@ -204,7 +204,7 @@ def read_gardens(current_user: User = Depends(get_current_user), session: Sessio
 def get_garden_access(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     garden = session.get(Garden, garden_id)
     if not garden or garden.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan toegang beheren")
+        raise HTTPException(status_code=403, detail="Only the owner can manage access")
     
     return [{"id": u.id, "email": u.email} for u in garden.shared_users]
 
@@ -212,11 +212,11 @@ def get_garden_access(garden_id: int, current_user: User = Depends(get_current_u
 def share_garden(garden_id: int, share_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     garden = session.get(Garden, garden_id)
     if not garden or garden.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan de tuin delen")
+        raise HTTPException(status_code=403, detail="Only the owner can share the garden")
     
     email = share_data.get("email")
     if not email:
-        raise HTTPException(status_code=400, detail="E-mail is verplicht")
+        raise HTTPException(status_code=400, detail="Email is required")
     
     target_user = session.exec(select(User).where(User.email == email)).first()
     if not target_user:
@@ -227,7 +227,7 @@ def share_garden(garden_id: int, share_data: dict, current_user: User = Depends(
         session.refresh(target_user)
     
     if target_user.id == current_user.id:
-        raise HTTPException(status_code=400, detail="Je kunt de tuin niet met jezelf delen")
+        raise HTTPException(status_code=400, detail="You cannot share the garden with yourself")
         
     existing = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == target_user.id)).first()
     if not existing:
@@ -235,20 +235,20 @@ def share_garden(garden_id: int, share_data: dict, current_user: User = Depends(
         session.add(access)
         session.commit()
         
-    return {"message": f"Tuin gedeeld met {email}"}
+    return {"message": f"Garden shared with {email}"}
 
 @app.delete("/gardens/{garden_id}/share/{user_id}")
 def unshare_garden(garden_id: int, user_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     garden = session.get(Garden, garden_id)
     if not garden or garden.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan toegang intrekken")
+        raise HTTPException(status_code=403, detail="Only the owner can revoke access")
     
     access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == user_id)).first()
     if access:
         session.delete(access)
         session.commit()
         
-    return {"message": "Toegang ingetrokken"}
+    return {"message": "Access revoked"}
 
 @app.put("/gardens/{garden_id}", response_model=Garden)
 def update_garden(garden_id: int, garden_data: Garden, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
@@ -273,7 +273,7 @@ def update_garden(garden_id: int, garden_data: Garden, current_user: User = Depe
 def delete_garden(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     db_garden = session.get(Garden, garden_id)
     if not db_garden or db_garden.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Alleen de eigenaar kan de tuin verwijderen")
+        raise HTTPException(status_code=403, detail="Only the owner can delete the garden")
     session.delete(db_garden)
     session.commit()
     return {"message": "Garden deleted"}
@@ -288,10 +288,10 @@ def get_garden_weather(garden_id: int, current_user: User = Depends(get_current_
         raise HTTPException(status_code=404, detail="Garden not found or no access")
     
     if not current_user.openweathermap_key:
-        raise HTTPException(status_code=400, detail="Geen OpenWeatherMap API key ingesteld")
+        raise HTTPException(status_code=400, detail="No OpenWeatherMap API key configured")
     
     if not garden.location:
-        raise HTTPException(status_code=400, detail="Geen locatie ingesteld voor deze tuin")
+        raise HTTPException(status_code=400, detail="No location set for this garden")
         
     weather = get_weather_data(garden.location, current_user.openweathermap_key)
     forecast = get_forecast_data(garden.location, current_user.openweathermap_key)
@@ -302,7 +302,7 @@ def get_garden_weather(garden_id: int, current_user: User = Depends(get_current_
     }
 
 @app.get("/gardens/{garden_id}/advice")
-def get_garden_advice(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def get_garden_advice(garden_id: int, locale: str = "en", current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     garden = session.get(Garden, garden_id)
     # Check access
     has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == current_user.id)).first()
@@ -335,7 +335,7 @@ def get_garden_advice(garden_id: int, current_user: User = Depends(get_current_u
     if not api_key:
         raise HTTPException(status_code=400, detail="AI API key missing")
         
-    advice = get_garden_advice_ai(plants_summary, weather_context, api_key, model, provider)
+    advice = get_garden_advice_ai(plants_summary, weather_context, api_key, model, provider, locale)
     return {"advice": advice}
 
 # Plant Endpoints
@@ -468,7 +468,7 @@ def delete_plant(plant_id: int, current_user: User = Depends(get_current_user), 
     has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == db_plant.garden_id, GardenAccess.user_id == current_user.id)).first()
     
     if not garden or (garden.user_id != current_user.id and not has_shared_access):
-        raise HTTPException(status_code=403, detail="Niet geautoriseerd")
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     session.delete(db_plant)
     session.commit()
@@ -482,7 +482,7 @@ def read_plant_detail(plant_id: int, current_user: User = Depends(get_current_us
     
     accessible_ids = get_accessible_garden_ids(current_user.id, session)
     if db_plant.garden_id not in accessible_ids:
-        raise HTTPException(status_code=403, detail="Niet geautoriseerd")
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     db_plant.tasks = session.exec(select(Task).where(Task.plant_id == plant_id)).all()
     return db_plant
@@ -499,7 +499,7 @@ def read_plants(garden_id: Optional[int] = None, current_user: User = Depends(ge
     
     if garden_id:
         if garden_id not in accessible_ids:
-            raise HTTPException(status_code=403, detail="Geen toegang tot deze tuin")
+            raise HTTPException(status_code=403, detail="No access to this garden")
         query = select(Plant).where(Plant.garden_id == garden_id)
     else:
         query = select(Plant).where(Plant.garden_id.in_(accessible_ids))
@@ -520,7 +520,7 @@ def search_trefle_plants(query: str, current_user: User = Depends(get_current_us
     return search_plants(query, current_user.trefle_token)
 
 @app.get("/ai-suggest/")
-def get_ai_suggestions(common_name: str, scientific_name: str, current_user: User = Depends(get_current_user)):
+def get_ai_suggestions(common_name: str, scientific_name: str, locale: str = "en", current_user: User = Depends(get_current_user)):
     provider = current_user.ai_provider or "openrouter"
     
     if provider == "openai":
@@ -534,7 +534,7 @@ def get_ai_suggestions(common_name: str, scientific_name: str, current_user: Use
         api_key = current_user.openrouter_key
         model = current_user.openrouter_model or "openrouter/auto"
         
-    return get_plant_suggestions_ai(common_name, scientific_name, api_key, model, provider)
+    return get_plant_suggestions_ai(common_name, scientific_name, api_key, model, provider, locale)
 
 def sync_plant_tasks(plant: Plant, session: Session):
     """
@@ -558,12 +558,12 @@ def sync_plant_tasks(plant: Plant, session: Session):
     # Add new flowering tasks
     for m in parse_months(plant.flowering_months):
         if m.isdigit():
-            session.add(Task(month=int(m), category="Bloei", description=f"Bloeiperiode voor {plant.common_name}", plant_id=plant.id))
+            session.add(Task(month=int(m), category="Bloei", description=f"Blooming period for {plant.common_name}", plant_id=plant.id))
     
     # Add new pruning tasks
     for m in parse_months(plant.pruning_months):
         if m.isdigit():
-            session.add(Task(month=int(m), category="Snoeien", description=f"Snoeien aanbevolen voor {plant.common_name}", plant_id=plant.id))
+            session.add(Task(month=int(m), category="Snoeien", description=f"Pruning recommended for {plant.common_name}", plant_id=plant.id))
     
     # Do not commit here, let the caller handle it or use session.flush()
     session.flush()
@@ -591,7 +591,7 @@ def read_tasks(month: Optional[int] = None, garden_id: Optional[int] = None, cur
         # Filter plants by garden if requested
         if garden_id:
             if garden_id not in accessible_ids:
-                 raise HTTPException(status_code=403, detail="Geen toegang")
+                 raise HTTPException(status_code=403, detail="No access")
             query = select(Plant).where(Plant.garden_id == garden_id)
         else:
             query = select(Plant).where(Plant.garden_id.in_(accessible_ids))

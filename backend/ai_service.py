@@ -3,7 +3,7 @@ import json
 import requests
 from typing import Dict, Optional
 
-def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: str, model: str = "openrouter/auto", provider: str = "openrouter") -> Dict:
+def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: str, model: str = "openrouter/auto", provider: str = "openrouter", locale: str = "en") -> Dict:
     """
     Use AI (OpenRouter or OpenAI) to get suggestions for flowering, pruning and remarks.
     """
@@ -18,18 +18,25 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
     safe_common = clean(common_name)
     safe_scientific = clean(scientific_name)
 
+    lang_map = {
+        "nl": "Nederlands",
+        "fr": "Français",
+        "en": "English"
+    }
+    target_lang = lang_map.get(locale, "English")
+
     prompt = f"""
-    Geef tuinieradvies voor de volgende plant in het Nederlands:
-    Naam: {safe_common}
-    Wetenschappelijke naam: {safe_scientific}
+    Provide gardening advice for the following plant in {target_lang}:
+    Name: {safe_common}
+    Scientific name: {safe_scientific}
 
-    Geef de respons strikt in JSON formaat met de volgende velden:
-    - dutch_name: de meest gangbare Nederlandse naam voor deze plant
-    - flowering_months: een komma-gescheiden reeks van maandnummers (bijv. "4,5,6")
-    - pruning_months: een komma-gescheiden reeks van maandnummers (bijv. "3,10")
-    - remarks: een korte, krachtige samenvatting van verzorgingstips (max 3 zinnen).
+    Provide the response strictly in JSON format with the following fields:
+    - localized_name: the most common name for this plant in {target_lang}
+    - flowering_months: a comma-separated sequence of month numbers (e.g. "4,5,6")
+    - pruning_months: a comma-separated sequence of month numbers (e.g. "3,10")
+    - remarks: a short, powerful summary of care tips (max 3 sentences) in {target_lang}.
 
-    Belangrijk: Zorg dat flowering_months en pruning_months echt strings zijn met alleen nummers en komma's, geen haken of accolades.
+    Important: Ensure that flowering_months and pruning_months are strings containing only numbers and commas, no brackets or braces.
 
     JSON:
     """
@@ -47,7 +54,7 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:3000", 
-                "X-Title": "TuinKalender",
+                "X-Title": "Plan-te",
             }
 
         response = requests.post(
@@ -81,29 +88,41 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
         print(f"{provider.capitalize()} AI Error: {e}")
         return {}
 
-def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, model: str = "openrouter/auto", provider: str = "openrouter") -> str:
+def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, model: str = "openrouter/auto", provider: str = "openrouter", locale: str = "en") -> str:
     """
     Get dynamic gardening advice based on the current weather and the plants in the garden.
     """
+    lang_map = {
+        "nl": "Nederlands",
+        "fr": "Français",
+        "en": "English"
+    }
+    target_lang = lang_map.get(locale, "English")
+
     if not api_key:
-        return "AI-sleutel niet geconfigureerd."
+        error_msgs = {
+            "nl": "AI-sleutel niet geconfigureerd.",
+            "fr": "Clé IA non configurée.",
+            "en": "AI key not configured."
+        }
+        return error_msgs.get(locale, "AI key not configured.")
 
     # Safely extract weather data
     current_weather = weather_data.get("current") or {}
     weather_list = current_weather.get("weather", [{}])
-    weather_desc = weather_list[0].get("description", "onbekend") if weather_list else "onbekend"
-    temp = current_weather.get("main", {}).get("temp", "onbekende")
+    weather_desc = weather_list[0].get("description", "unknown") if weather_list else "unknown"
+    temp = current_weather.get("main", {}).get("temp", "unknown")
     
     prompt = f"""
-    Je bent een deskundige tuinier-assistent. Geef kort en krachtig advies (max 4 zinnen) in het Nederlands voor een tuin met de volgende planten:
+    You are an expert gardening assistant. Provide short and powerful advice (max 4 sentences) in {target_lang} for a garden with the following plants:
     {plants_summary}
 
-    Huidig weer: {weather_desc}, temperatuur: {temp}°C.
+    Current weather: {weather_desc}, temperature: {temp}°C.
 
-    Focus op:
-    1. Directe actie op basis van het weer (bijv. water geven bij hitte, beschermen bij vorst).
-    2. Specifieke tips voor deze planten in deze omstandigheden.
-    3. Wees persoonlijk en behulpzaam.
+    Focus on:
+    1. Direct action based on the weather (e.g. watering in heat, protecting from frost).
+    2. Specific tips for these plants in these conditions.
+    3. Be personal and helpful.
     """
 
     try:
@@ -116,7 +135,7 @@ def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, 
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "HTTP-Referer": "http://localhost:3000",
-                "X-Title": "TuinKalender",
+                "X-Title": "Plan-te",
             }
 
         response = requests.post(
@@ -132,4 +151,9 @@ def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, 
         return result['choices'][0]['message']['content'].strip()
     except Exception as e:
         print(f"Advice AI Error: {e}")
-        return "Kon geen AI-advies ophalen op dit moment."
+        error_msgs = {
+            "nl": "Kon geen AI-advies ophalen op dit moment.",
+            "fr": "Impossible de récupérer les conseils de l'IA pour le moment.",
+            "en": "Could not fetch AI advice at this time."
+        }
+        return error_msgs.get(locale, "Could not fetch AI advice at this time.")

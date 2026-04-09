@@ -3,9 +3,10 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import PlantModal from "@/components/PlantModal";
 import PlantInfoModal from "@/components/PlantInfoModal";
+import { useTranslations, useLocale } from "next-intl";
 
 interface Plant {
   id: number;
@@ -36,6 +37,8 @@ let plantsCache: Record<string, Plant[]> = {};
 let gardenCache: Record<string, any> = {};
 
 export default function GardenPlantsPage() {
+  const t = useTranslations('Common');
+  const locale = useLocale();
   const { id: gardenId } = useParams();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -87,7 +90,7 @@ export default function GardenPlantsPage() {
 
   const fetchAiAdvice = async () => {
     try {
-      const response = await fetch(`${API_URL}/gardens/${gardenId}/advice`, {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/advice?locale=${locale}`, {
         headers: { Authorization: `Bearer ${session?.accessToken}` }
       });
       if (response.ok) {
@@ -141,7 +144,7 @@ export default function GardenPlantsPage() {
         fetchSharedUsers();
       } else {
         const data = await response.json();
-        alert(data.detail || "Kon tuin niet delen");
+        alert(data.detail || t("couldNotShareGarden"));
       }
     } catch (error) {}
     setIsSharing(false);
@@ -240,7 +243,7 @@ export default function GardenPlantsPage() {
   };
 
   const deletePlant = async (id: number) => {
-    if (!confirm("Weet je zeker dat je deze plant wilt verwijderen?")) return;
+    if (!confirm(t("confirmDeletePlant") || "Weet je zeker dat je deze plant wilt verwijderen?")) return;
     try {
       await fetch(`${API_URL}/plants/${id}`, { 
         method: "DELETE",
@@ -266,7 +269,7 @@ export default function GardenPlantsPage() {
   };
 
   const movePlant = async (plant: Plant, targetGardenId: number) => {
-    if (!confirm(`Weet je zeker dat je ${plant.common_name || 'deze plant'} wilt verplaatsen?`)) return;
+    if (!confirm(t("confirmMovePlant", { name: plant.common_name || 'deze plant' }) || `Weet je zeker dat je ${plant.common_name || 'deze plant'} wilt verplaatsen?`)) return;
     
     try {
       const response = await fetch(`${API_URL}/plants/${plant.id}`, {
@@ -333,7 +336,7 @@ export default function GardenPlantsPage() {
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-4">
           <span className="material-symbols-outlined text-primary text-5xl animate-spin">potted_plant</span>
-          <p className="text-on-surface font-medium animate-pulse">Laden...</p>
+          <p className="text-on-surface font-medium animate-pulse">{t('loading')}</p>
         </div>
       </div>
     );
@@ -351,10 +354,10 @@ export default function GardenPlantsPage() {
               </div>
             )}
             <div>
-              <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Mijn Tuin</span>
+              <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{t('myGarden') || "Mijn Tuin"}</span>
               <div className="flex items-center gap-4">
                 <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
-                  {garden?.name || "Laden..."}
+                  {garden?.name || t('loading')}
                 </h2>
                 {allGardens.length > 1 && (
                   <div className="relative">
@@ -397,7 +400,7 @@ export default function GardenPlantsPage() {
               <button 
                 onClick={() => setShowShareModal(true)}
                 className="flex items-center justify-center w-14 h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-secondary transition-all active:scale-95 shadow-sm"
-                title="Deel Tuin"
+                title={t('shareGarden')}
               >
                 <span className="material-symbols-outlined">share</span>
               </button>
@@ -411,7 +414,7 @@ export default function GardenPlantsPage() {
               className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
             >
               <span className="material-symbols-outlined">add</span>
-              <span>Plant Toevoegen</span>
+              <span>{t('addPlant') || "Plant Toevoegen"}</span>
             </button>
           </div>
         </div>
@@ -424,21 +427,21 @@ export default function GardenPlantsPage() {
               {weather?.current && (
                 <div className="flex-grow p-4 md:p-6 flex items-center justify-around md:justify-start md:gap-12 bg-surface-container-low/50">
                   <div className="flex flex-col items-center md:items-start">
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Vochtigheid</p>
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">{t('humidity') || "Vochtigheid"}</p>
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm text-primary/60">humidity_percentage</span>
                       <p className="text-sm font-bold text-on-surface">{weather.current.main.humidity}%</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-center md:items-start">
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Wind</p>
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">{t('wind') || "Wind"}</p>
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm text-primary/60">air</span>
                       <p className="text-sm font-bold text-on-surface">{Math.round(weather.current.wind.speed * 3.6)} km/u</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-center md:items-start">
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">Gevoel</p>
+                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">{t('feelsLike') || "Gevoel"}</p>
                     <div className="flex items-center gap-1">
                       <span className="material-symbols-outlined text-sm text-primary/60">thermostat</span>
                       <p className="text-sm font-bold text-on-surface">{Math.round(weather.current.main.feels_like)}°C</p>
@@ -455,7 +458,7 @@ export default function GardenPlantsPage() {
                 >
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-secondary">auto_awesome</span>
-                    <span className="text-sm font-bold uppercase tracking-widest">Slim Advies</span>
+                    <span className="text-sm font-bold uppercase tracking-widest">{t('smartAdvice') || "Slim Advies"}</span>
                   </div>
                   <span className={`material-symbols-outlined transition-transform duration-300 ${isAdviceExpanded ? 'rotate-180' : ''}`}>
                     expand_more
@@ -480,7 +483,7 @@ export default function GardenPlantsPage() {
           <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input 
             className="w-full bg-surface-container-high border-none rounded-xl py-5 pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-lg placeholder:text-outline transition-all" 
-            placeholder="Zoek in deze tuin..." 
+            placeholder={t('searchInGardenPlaceholder') || "Zoek in deze tuin..."} 
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -490,7 +493,7 @@ export default function GardenPlantsPage() {
 
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
-          <h3 className="font-headline text-2xl font-bold">Planten in {garden?.name}</h3>
+          <h3 className="font-headline text-2xl font-bold">{t('plantsIn', { name: garden?.name }) || `Planten in ${garden?.name}`}</h3>
           <div className="flex items-center gap-4">
             <div className="flex bg-surface-container-high p-1 rounded-xl">
               <button 
@@ -507,7 +510,7 @@ export default function GardenPlantsPage() {
               </button>
             </div>
             <span className="bg-surface-container-lowest border border-outline-variant/15 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-              {filteredAndSortedPlants.length} Totaal
+              {filteredAndSortedPlants.length} {t('total')}
             </span>
           </div>
         </div>
@@ -521,7 +524,7 @@ export default function GardenPlantsPage() {
         ) : filteredAndSortedPlants.length === 0 ? (
           <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
             <span className="material-symbols-outlined text-outline text-6xl mb-4">park</span>
-            <p className="text-on-surface-variant font-medium">Geen planten gevonden.</p>
+            <p className="text-on-surface-variant font-medium">{t('noPlantsFound') || "Geen planten gevonden."}</p>
           </div>
         ) : (
           <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" : "space-y-4"}>
@@ -554,7 +557,7 @@ export default function GardenPlantsPage() {
                 <div className={`flex-grow ${viewMode === 'grid' ? 'p-4' : 'pr-4'}`}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors leading-tight">{plant.common_name || "Onbekend"}</h4>
+                      <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors leading-tight">{plant.common_name || t('unknown')}</h4>
                       <p className="text-secondary font-medium italic text-sm line-clamp-1">{plant.scientific_name}</p>
                     </div>
                     {viewMode === 'grid' && (
@@ -570,13 +573,13 @@ export default function GardenPlantsPage() {
                     {plant.flowering_months && (
                       <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px]">filter_vintage</span>
-                        Bloei: {plant.flowering_months}
+                        {t('bloom')}: {plant.flowering_months}
                       </span>
                     )}
                     {plant.pruning_months && (
                       <span className="text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
                         <span className="material-symbols-outlined text-[12px]">content_cut</span>
-                        Snoei: {plant.pruning_months}
+                        {t('pruning')}: {plant.pruning_months}
                       </span>
                     )}
                   </div>
@@ -643,7 +646,7 @@ export default function GardenPlantsPage() {
           <div className="bg-surface w-full max-w-4xl max-h-[80vh] rounded-2xl flex flex-col overflow-hidden editorial-shadow">
             <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
               <div>
-                <h2 className="font-headline text-2xl font-bold text-on-surface">Plant Ruwe Data</h2>
+                <h2 className="font-headline text-2xl font-bold text-on-surface">{t('rawData')}</h2>
                 <p className="text-on-surface-variant text-sm font-medium">Trefle.io JSON</p>
               </div>
               <button 
@@ -667,13 +670,13 @@ export default function GardenPlantsPage() {
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-on-surface/40 backdrop-blur-sm">
           <div className="bg-surface w-full max-w-sm rounded-2xl overflow-hidden editorial-shadow">
             <div className="p-6 border-b border-outline-variant/10 flex justify-between items-center">
-              <h2 className="font-headline text-xl font-bold">Verplaatsen</h2>
+              <h2 className="font-headline text-xl font-bold">{t('move') || "Verplaatsen"}</h2>
               <button onClick={() => setMovingPlant(null)} className="text-on-surface-variant">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
             <div className="p-4 space-y-2">
-              <p className="text-xs font-bold text-outline uppercase tracking-widest px-2">Kies doeltuin</p>
+              <p className="text-xs font-bold text-outline uppercase tracking-widest px-2">{t('chooseTargetGarden') || "Kies doeltuin"}</p>
               {allGardens
                 .filter(g => g.id.toString() !== gardenId)
                 .map(g => (
@@ -688,7 +691,7 @@ export default function GardenPlantsPage() {
                 ))
               }
               {allGardens.length <= 1 && (
-                <p className="p-4 text-sm text-on-surface-variant italic">Geen andere tuinen beschikbaar.</p>
+                <p className="p-4 text-sm text-on-surface-variant italic">{t('noOtherGardensAvailable') || "Geen andere tuinen beschikbaar."}</p>
               )}
             </div>
           </div>
@@ -703,9 +706,9 @@ export default function GardenPlantsPage() {
               <div>
                 <h2 className="text-2xl font-bold flex items-center gap-2">
                   <span className="material-symbols-outlined text-secondary">share</span>
-                  Tuin Delen
+                  {t('shareGarden')}
                 </h2>
-                <p className="text-on-surface-variant text-sm font-medium">Toegang tot {garden?.name}</p>
+                <p className="text-on-surface-variant text-sm font-medium">{t('accessTo', { name: garden?.name })}</p>
               </div>
               <button 
                 onClick={() => setShowShareModal(false)}
@@ -717,7 +720,7 @@ export default function GardenPlantsPage() {
             
             <div className="p-8 space-y-8">
               <form onSubmit={handleShare} className="space-y-2">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Gebruiker uitnodigen</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('inviteUser')}</label>
                 <div className="flex gap-2">
                   <input
                     type="email"
@@ -731,7 +734,7 @@ export default function GardenPlantsPage() {
                     disabled={isSharing}
                     className="bg-secondary text-white px-6 rounded-xl font-bold hover:bg-secondary/90 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
                   >
-                    {isSharing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : "Deel"}
+                    {isSharing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : t('share')}
                   </button>
                 </div>
               </form>
@@ -739,15 +742,17 @@ export default function GardenPlantsPage() {
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-outline uppercase tracking-widest px-1 flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm">group</span>
-                  Toegang
+                  {t('access')}
                 </h3>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary text-xs font-bold">J</div>
+                      <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary text-xs font-bold">
+                        {session?.user?.name?.[0]?.toUpperCase() || 'Y'}
+                      </div>
                       <div>
-                        <div className="text-sm font-bold text-on-surface">Jij</div>
-                        <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Eigenaar</div>
+                        <div className="text-sm font-bold text-on-surface">{t('you')}</div>
+                        <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{t('owner')}</div>
                       </div>
                     </div>
                   </div>
@@ -759,13 +764,13 @@ export default function GardenPlantsPage() {
                         </div>
                         <div className="min-w-0">
                           <div className="text-sm font-bold text-on-surface truncate max-w-[150px]">{u.email}</div>
-                          <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Bewerker</div>
+                          <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{t('editor')}</div>
                         </div>
                       </div>
                       <button 
                         onClick={() => removeShare(u.id)}
                         className="p-2 text-on-surface-variant hover:text-error transition-all"
-                        title="Verwijder"
+                        title={t('remove')}
                       >
                         <span className="material-symbols-outlined">person_remove</span>
                       </button>

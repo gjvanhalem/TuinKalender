@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import { Link, useRouter } from "@/i18n/routing";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 interface Garden {
   id: number;
@@ -30,6 +30,7 @@ const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 let gardensCache: Garden[] | null = null;
 
 export default function GardensPage() {
+  const t = useTranslations('Common');
   const { data: session, status } = useSession();
   const router = useRouter();
   const [gardens, setGardens] = useState<Garden[]>(gardensCache || []);
@@ -127,7 +128,7 @@ export default function GardensPage() {
 
   const useCurrentLocation = () => {
     if (!navigator.geolocation) {
-      alert("Geolocatie wordt niet ondersteund door uw browser.");
+      alert(t("geolocationNotSupported"));
       return;
     }
 
@@ -152,7 +153,7 @@ export default function GardensPage() {
       },
       (error) => {
         console.error("Error getting location", error);
-        alert("Kon uw locatie niet ophalen.");
+        alert(t("couldNotGetLocation"));
         setIsLocating(false);
       }
     );
@@ -265,7 +266,7 @@ export default function GardensPage() {
         fetchSharedUsers(currentSharingGarden.id);
       } else {
         const data = await response.json();
-        alert(data.detail || "Kon tuin niet delen");
+        alert(data.detail || t("couldNotShareGarden"));
       }
     } catch (error) {
       console.error("Failed to share garden:", error);
@@ -287,7 +288,7 @@ export default function GardensPage() {
   };
 
   const deleteGarden = async (id: number) => {
-    if (!confirm("Weet je zeker dat je deze tuin wilt verwijderen? Alle planten in deze tuin worden ook verwijderd.")) return;
+    if (!confirm(t("confirmDeleteGarden"))) return;
     try {
       const response = await fetch(`${API_URL}/gardens/${id}`, {
         method: "DELETE",
@@ -313,7 +314,7 @@ export default function GardensPage() {
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-4">
           <span className="material-symbols-outlined text-primary text-5xl animate-spin">potted_plant</span>
-          <p className="text-on-surface font-medium animate-pulse">Laden...</p>
+          <p className="text-on-surface font-medium animate-pulse">{t('loading')}</p>
         </div>
       </div>
     );
@@ -324,8 +325,8 @@ export default function GardensPage() {
       <section className="mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Mijn Collectie</span>
-            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">Tuinen</h2>
+            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{t('myCollection')}</span>
+            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{t('gardens')}</h2>
           </div>
           <button 
             onClick={() => {
@@ -337,7 +338,7 @@ export default function GardensPage() {
             className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
           >
             <span className="material-symbols-outlined">add</span>
-            <span>Nieuwe Tuin</span>
+            <span>{t('newGarden')}</span>
           </button>
         </div>
 
@@ -345,7 +346,7 @@ export default function GardensPage() {
           <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input 
             className="w-full bg-surface-container-high border-none rounded-xl py-5 pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-lg placeholder:text-outline transition-all" 
-            placeholder="Zoek in je tuinen..." 
+            placeholder={t('searchGardensPlaceholder')} 
             type="text"
           />
         </div>
@@ -353,9 +354,9 @@ export default function GardensPage() {
 
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2">
-          <h3 className="font-headline text-2xl font-bold">Mijn Tuinen</h3>
+          <h3 className="font-headline text-2xl font-bold">{t('myGardens')}</h3>
           <span className="bg-surface-container-lowest border border-outline-variant/15 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-            {gardens.length} Totaal
+            {gardens.length} {t('total')}
           </span>
         </div>
 
@@ -368,7 +369,7 @@ export default function GardensPage() {
         ) : gardens.length === 0 ? (
           <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
             <span className="material-symbols-outlined text-outline text-6xl mb-4">map</span>
-            <p className="text-on-surface-variant font-medium">Je hebt nog geen tuinen toegevoegd.</p>
+            <p className="text-on-surface-variant font-medium">{t('noGardensAdded')}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -398,7 +399,7 @@ export default function GardensPage() {
                       </h4>
                       <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-1 font-medium">
                         <span className="material-symbols-outlined text-sm">location_on</span>
-                        {garden.location || "Geen locatie"}
+                        {garden.location || t('noLocation')}
                       </p>
                       {garden.weather && (
                         <div className="flex items-center gap-2 mt-2 bg-primary/5 px-2 py-1 rounded-lg border border-primary/10 w-fit">
@@ -412,7 +413,7 @@ export default function GardensPage() {
                       )}
                       {!garden.is_owner && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-secondary-fixed-dim bg-secondary/10 px-2 py-0.5 rounded-full mt-2">
-                          Gedeeld door {garden.owner_email.split('@')[0]}
+                          {t('sharedBy', { name: garden.owner_email.split('@')[0] })}
                         </span>
                       )}
                     </Link>
@@ -451,7 +452,7 @@ export default function GardensPage() {
                 <div className="mt-6 flex items-center justify-between pt-4 border-t border-outline-variant/10">
                   <div className="flex items-center gap-6">
                     <div className="flex flex-col">
-                      <span className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Planten</span>
+                      <span className="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">{t('plants')}</span>
                       <span className="text-xl font-bold text-on-surface">{garden.plant_count || 0}</span>
                     </div>
                   </div>
@@ -459,7 +460,7 @@ export default function GardensPage() {
                     href={`/gardens/${garden.id}`}
                     className="bg-primary/10 text-primary px-6 py-2 rounded-xl font-bold text-sm hover:bg-primary hover:text-white transition-all flex items-center gap-2"
                   >
-                    Open Tuin
+                    {t('openGarden')}
                     <span className="material-symbols-outlined text-sm">arrow_forward</span>
                   </Link>
                 </div>
@@ -475,7 +476,7 @@ export default function GardensPage() {
           <div className="bg-surface w-full max-w-lg rounded-2xl p-8 editorial-shadow border border-outline-variant/10">
             <div className="flex justify-between items-center mb-8">
               <h3 className="font-headline text-2xl font-bold text-on-surface">
-                {editingGarden ? "Tuin Bewerken" : "Nieuwe Tuin"}
+                {editingGarden ? t('editGarden') : t('newGarden')}
               </h3>
               <button 
                 onClick={() => {
@@ -512,14 +513,14 @@ export default function GardensPage() {
                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                     />
                  </div>
-                 <p className="text-[10px] font-bold text-outline uppercase tracking-widest mt-2">Klik om foto te kiezen</p>
+                 <p className="text-[10px] font-bold text-outline uppercase tracking-widest mt-2">{t('clickToChoosePhoto')}</p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-on-surface-variant px-1">Naam van de tuin</label>
+                <label className="text-sm font-semibold text-on-surface-variant px-1">{t('gardenName')}</label>
                 <input
                   type="text"
-                  placeholder="Bijv. Achtertuin, Balkon"
+                  placeholder={t('gardenNameExample')}
                   className="w-full bg-surface-container-high border-none rounded-xl py-4 px-6 focus:ring-2 focus:ring-primary/20 text-on-surface"
                   value={newGardenName}
                   onChange={(e) => setNewGardenName(e.target.value)}
@@ -528,11 +529,11 @@ export default function GardensPage() {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-on-surface-variant px-1">Locatie</label>
+                <label className="text-sm font-semibold text-on-surface-variant px-1">{t('locationOrCoordinates')}</label>
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Locatie of coördinaten"
+                    placeholder={t('locationOrCoordinates')}
                     className="flex-grow bg-surface-container-high border-none rounded-xl py-4 px-6 focus:ring-2 focus:ring-primary/20 text-on-surface"
                     value={newGardenLocation}
                     onChange={(e) => setNewGardenLocation(e.target.value)}
@@ -566,7 +567,7 @@ export default function GardensPage() {
                 className="w-full bg-primary text-white py-4 rounded-xl font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
               >
                 <span className="material-symbols-outlined">{editingGarden ? "save" : "add_circle"}</span>
-                {editingGarden ? "Wijzigingen Opslaan" : "Tuin Aanmaken"}
+                {editingGarden ? t('saveChanges') : t('createGarden')}
               </button>
             </form>
           </div>
@@ -581,9 +582,9 @@ export default function GardensPage() {
               <div>
                 <h2 className="text-2xl font-bold flex items-center gap-2 text-on-surface">
                   <span className="material-symbols-outlined text-secondary">share</span>
-                  Tuin Delen
+                  {t('shareGarden')}
                 </h2>
-                <p className="text-on-surface-variant text-sm font-medium">Toegang tot {currentSharingGarden?.name}</p>
+                <p className="text-on-surface-variant text-sm font-medium">{t('accessTo', { name: currentSharingGarden?.name })}</p>
               </div>
               <button 
                 onClick={() => setShowShareModal(false)}
@@ -595,7 +596,7 @@ export default function GardensPage() {
             
             <div className="p-8 space-y-8">
               <form onSubmit={handleShare} className="space-y-2">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Gebruiker uitnodigen</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('inviteUser')}</label>
                 <div className="flex gap-2">
                   <input
                     type="email"
@@ -609,7 +610,7 @@ export default function GardensPage() {
                     disabled={isSharing}
                     className="bg-secondary text-white px-6 rounded-xl font-bold hover:bg-secondary/90 transition-all disabled:opacity-50 flex items-center justify-center min-w-[80px]"
                   >
-                    {isSharing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : "Deel"}
+                    {isSharing ? <span className="material-symbols-outlined animate-spin">progress_activity</span> : t('share')}
                   </button>
                 </div>
               </form>
@@ -617,15 +618,17 @@ export default function GardensPage() {
               <div className="space-y-4">
                 <h3 className="text-xs font-bold text-outline uppercase tracking-widest px-1 flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm">group</span>
-                  Toegang
+                  {t('access')}
                 </h3>
                 <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                   <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary text-xs font-bold">J</div>
+                      <div className="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary text-xs font-bold">
+                        {session?.user?.name?.[0]?.toUpperCase() || 'Y'}
+                      </div>
                       <div>
-                        <div className="text-sm font-bold text-on-surface">Jij</div>
-                        <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Eigenaar</div>
+                        <div className="text-sm font-bold text-on-surface">{t('you')}</div>
+                        <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{t('owner')}</div>
                       </div>
                     </div>
                   </div>
@@ -637,13 +640,13 @@ export default function GardensPage() {
                         </div>
                         <div className="min-w-0">
                           <div className="text-sm font-bold text-on-surface truncate max-w-[150px]">{u.email}</div>
-                          <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">Bewerker</div>
+                          <div className="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">{t('editor')}</div>
                         </div>
                       </div>
                       <button 
                         onClick={() => removeShare(u.id)}
                         className="p-2 text-on-surface-variant hover:text-error transition-all"
-                        title="Verwijder"
+                        title={t('remove')}
                       >
                         <span className="material-symbols-outlined">person_remove</span>
                       </button>

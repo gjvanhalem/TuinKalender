@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useRouter, Link } from "@/i18n/routing";
 import PlantInfoModal from "@/components/PlantInfoModal";
 import PlantModal from "@/components/PlantModal";
+import { useTranslations } from "next-intl";
 
 interface Plant {
   id: number;
@@ -40,11 +40,6 @@ interface Task {
   };
 }
 
-const months = [
-  "Januari", "Februari", "Maart", "April", "Mei", "Juni",
-  "Juli", "Augustus", "September", "Oktober", "November", "December"
-];
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 const categoryIcons: Record<string, string> = {
@@ -69,9 +64,18 @@ let calendarCache: {
 } | null = null;
 
 export default function CalendarPage() {
+  const t = useTranslations('Common');
+  const tMonths = useTranslations('Months');
+  const tCategories = useTranslations('Categories');
+  const tCalendar = useTranslations('Calendar');
   const { data: session, status } = useSession();
   const router = useRouter();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1); // 1-12
+
+  const monthsList = [
+    tMonths('1'), tMonths('2'), tMonths('3'), tMonths('4'), tMonths('5'), tMonths('6'),
+    tMonths('7'), tMonths('8'), tMonths('9'), tMonths('10'), tMonths('11'), tMonths('12')
+  ];
   const [tasks, setTasks] = useState<Task[]>(calendarCache?.tasks || []);
   const [allYearTasks, setAllYearTasks] = useState<any[]>(calendarCache?.allYearTasks || []);
   const [gardens, setGardens] = useState<any[]>(calendarCache?.gardens || []);
@@ -124,7 +128,7 @@ export default function CalendarPage() {
 
   const fetchPlantDetails = async (plantId: number) => {
     if (!plantId) return;
-    setActivePlant({ id: plantId, common_name: "Laden..." } as any);
+    setActivePlant({ id: plantId, common_name: t('loading') } as any);
     setIsPlantInfoModalOpen(true);
     try {
       const response = await fetch(`${API_URL}/plants/${plantId}`, {
@@ -342,7 +346,7 @@ export default function CalendarPage() {
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="flex flex-col items-center gap-4">
           <span className="material-symbols-outlined text-primary text-5xl animate-spin">calendar_month</span>
-          <p className="text-on-surface font-medium animate-pulse">Laden...</p>
+          <p className="text-on-surface font-medium animate-pulse">{t('loading')}</p>
         </div>
       </div>
     );
@@ -354,7 +358,7 @@ export default function CalendarPage() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
             <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Seizoensgids</span>
-            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">Kalender</h2>
+            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{t('calendar')}</h2>
           </div>
           <div className="flex bg-surface-container-high p-1 rounded-xl">
             <button 
@@ -362,14 +366,14 @@ export default function CalendarPage() {
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant'}`}
             >
               <span className="material-symbols-outlined text-[20px]">view_list</span>
-              <span className="text-sm font-bold">Lijst</span>
+              <span className="text-sm font-bold">{tCalendar('list')}</span>
             </button>
             <button 
               onClick={() => setViewMode('table')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${viewMode === 'table' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant'}`}
             >
               <span className="material-symbols-outlined text-[20px]">grid_on</span>
-              <span className="text-sm font-bold">Jaaroverzicht</span>
+              <span className="text-sm font-bold">{tCalendar('table')}</span>
             </button>
           </div>
         </div>
@@ -382,10 +386,10 @@ export default function CalendarPage() {
               onChange={(e) => setSelectedGardenId(e.target.value)}
               className="bg-transparent border-none focus:ring-0 text-sm font-bold text-on-surface-variant outline-none pr-8 cursor-pointer w-full"
             >
-              <option value="all">Alle Tuinen</option>
+              <option value="all">{tCalendar('allGardens')}</option>
               {gardens.map(g => (
                 <option key={g.id} value={g.id.toString()}>
-                  {g.name} {!g.is_owner ? `(gedeeld)` : ''}
+                  {g.name} {!g.is_owner ? `(${t('sharedBy', { name: '' }).replace(': ', '').trim()})` : ''}
                 </option>
               ))}
             </select>
@@ -398,9 +402,9 @@ export default function CalendarPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="bg-transparent border-none focus:ring-0 text-sm font-bold text-on-surface-variant outline-none pr-8 cursor-pointer w-full"
             >
-              <option value="all">Alle Activiteiten</option>
-              <option value="Bloei">Alleen Bloei</option>
-              <option value="Snoeien">Alleen Snoeien</option>
+              <option value="all">{tCalendar('allCategories')}</option>
+              <option value="Bloei">{tCategories('Bloei')}</option>
+              <option value="Snoeien">{tCategories('Snoeien')}</option>
             </select>
           </div>
 
@@ -409,7 +413,7 @@ export default function CalendarPage() {
               <span className="material-symbols-outlined">chevron_left</span>
             </button>
             <div className="text-center">
-              <span className="text-2xl font-bold text-on-surface">{months[currentMonth - 1]}</span>
+              <span className="text-2xl font-bold text-on-surface">{monthsList[currentMonth - 1]}</span>
             </div>
             <button onClick={nextMonth} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-all">
               <span className="material-symbols-outlined">chevron_right</span>
@@ -435,7 +439,12 @@ export default function CalendarPage() {
             return filteredGroups.length === 0 ? (
               <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
                 <span className="material-symbols-outlined text-outline text-6xl mb-4">sunny</span>
-                <p className="text-on-surface-variant font-medium">Geen {selectedCategory !== "all" ? selectedCategory.toLowerCase() : 'taken'} voor {months[currentMonth - 1]}.</p>
+                <p className="text-on-surface-variant font-medium">
+                  {tCalendar('noTasks', { 
+                    category: selectedCategory !== "all" ? tCategories(selectedCategory).toLowerCase() : t('plants').toLowerCase(), 
+                    month: monthsList[currentMonth - 1] 
+                  })}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -469,7 +478,7 @@ export default function CalendarPage() {
 
                       <div className="flex-grow text-center md:text-left">
                         <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3">
-                          <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{plant?.common_name || 'Onbekende Plant'}</h4>
+                          <h4 className="font-headline text-xl font-bold text-on-surface group-hover:text-primary transition-colors">{plant?.common_name || t('unknown')}</h4>
                           {plant?.garden_name && (
                             <span className="text-[10px] bg-outline/10 text-on-surface-variant px-2 py-0.5 rounded-full font-bold uppercase tracking-widest">{plant.garden_name}</span>
                           )}
@@ -495,14 +504,14 @@ export default function CalendarPage() {
                                   </div>
                                 )}
                                 <p className={`text-sm font-medium flex-grow ${isCompleted ? 'line-through text-on-surface-variant opacity-60' : 'text-on-surface'}`}>
-                                  <span className="font-bold text-primary/80 mr-2">{task.category}:</span>
+                                  <span className="font-bold text-primary/80 mr-2">{tCategories(task.category)}:</span>
                                   {task.description}
                                 </p>
                                 {task.is_user_override && (
                                   <button 
                                     onClick={(e) => deleteTask(task.id, e)}
                                     className="opacity-0 group-hover/task:opacity-100 p-1 text-outline hover:text-error transition-all"
-                                    title="Verwijder taak"
+                                    title={t('delete')}
                                   >
                                     <span className="material-symbols-outlined text-sm">delete</span>
                                   </button>
@@ -522,17 +531,17 @@ export default function CalendarPage() {
                                   onChange={(e) => setNewTaskCategory(e.target.value)}
                                   className="p-2 bg-surface-container-highest rounded-lg text-xs font-bold outline-none border-none focus:ring-1 focus:ring-primary/30"
                                 >
-                                  <option value="Notitie">Notitie</option>
-                                  <option value="Taak">Taak</option>
-                                  <option value="Snoeien">Snoeien</option>
-                                  <option value="Water">Water</option>
-                                  <option value="Voeding">Voeding</option>
-                                  <option value="Verpotten">Verpotten</option>
+                                  <option value="Notitie">{tCategories('Notitie')}</option>
+                                  <option value="Taak">{tCategories('Taak')}</option>
+                                  <option value="Snoeien">{tCategories('Snoeien')}</option>
+                                  <option value="Water">{tCategories('Water')}</option>
+                                  <option value="Voeding">{tCategories('Voeding')}</option>
+                                  <option value="Verpotten">{tCategories('Verpotten')}</option>
                                 </select>
                                 <input 
                                   autoFocus
                                   type="text"
-                                  placeholder="Wat moet er gebeuren?"
+                                  placeholder={t('searchPlaceholder')}
                                   className="flex-1 p-2 bg-surface-container-highest rounded-lg text-sm outline-none border-none focus:ring-1 focus:ring-primary/30 text-on-surface"
                                   value={newTaskDescription}
                                   onChange={(e) => setNewTaskDescription(e.target.value)}
@@ -544,13 +553,13 @@ export default function CalendarPage() {
                                   onClick={() => setIsAddingTask(null)}
                                   className="text-[10px] font-bold uppercase tracking-wider text-outline hover:text-on-surface px-2 py-1"
                                 >
-                                  Annuleren
+                                  {t('cancel')}
                                 </button>
                                 <button 
                                   onClick={() => handleAddCustomTask(group.plant_id)}
                                   className="text-[10px] font-bold uppercase tracking-wider bg-primary text-white px-3 py-1 rounded-md shadow-sm"
                                 >
-                                  Toevoegen
+                                  {t('add')}
                                 </button>
                               </div>
                             </div>
@@ -560,7 +569,7 @@ export default function CalendarPage() {
                               className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-primary/60 hover:text-primary transition-colors"
                             >
                               <span className="material-symbols-outlined text-sm">add_circle</span>
-                              Taak of Notitie Toevoegen
+                              {t('add')} {tCategories('Taak')}
                             </button>
                           )}
                         </div>
@@ -587,7 +596,7 @@ export default function CalendarPage() {
                 <thead>
                   <tr className="bg-surface-container-high/50 border-b border-outline-variant/10">
                     <th className="p-6 text-[10px] font-bold uppercase tracking-widest text-outline w-64">Plant</th>
-                    {months.map((m, idx) => (
+                    {monthsList.map((m, idx) => (
                       <th key={m} className={`p-4 text-[10px] font-bold uppercase tracking-widest text-center ${idx + 1 === new Date().getMonth() + 1 ? 'text-primary' : 'text-outline'}`}>
                         {m.substring(0, 3)}
                       </th>
@@ -652,11 +661,11 @@ export default function CalendarPage() {
             <div className="p-6 bg-surface-container-high/30 border-t border-outline-variant/10 flex flex-wrap gap-6 justify-center">
                <div className="flex items-center gap-2 text-[10px] font-bold text-outline uppercase tracking-widest">
                   <span className="material-symbols-outlined text-primary text-sm">filter_vintage</span>
-                  Bloeiperiode
+                  {tCategories('Bloei')}
                </div>
                <div className="flex items-center gap-2 text-[10px] font-bold text-outline uppercase tracking-widest">
                   <span className="material-symbols-outlined text-secondary text-sm">content_cut</span>
-                  Snoeiperiode
+                  {tCategories('Snoeien')}
                </div>
             </div>
           </div>

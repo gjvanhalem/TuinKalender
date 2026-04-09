@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Modal from "./Modal";
+import { useTranslations, useLocale } from "next-intl";
 
 interface Plant {
   id: number;
@@ -48,6 +49,8 @@ export default function PlantModal({
   API_URL,
   accessToken
 }: PlantModalProps) {
+  const t = useTranslations('Common');
+  const locale = useLocale();
   const [formData, setFormData] = useState<Partial<Plant>>({});
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -115,7 +118,7 @@ export default function PlantModal({
     setIsAiLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/ai-suggest/?common_name=${encodeURIComponent(formData.common_name || "")}&scientific_name=${encodeURIComponent(formData.scientific_name || "")}`,
+        `${API_URL}/ai-suggest/?common_name=${encodeURIComponent(formData.common_name || "")}&scientific_name=${encodeURIComponent(formData.scientific_name || "")}&locale=${locale}`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
       const data = await response.json();
@@ -128,7 +131,7 @@ export default function PlantModal({
 
         setFormData({
           ...formData,
-          common_name: data.dutch_name || formData.common_name,
+          common_name: data.localized_name || data.dutch_name || formData.common_name,
           flowering_months: cleanMonths(data.flowering_months || formData.flowering_months || ""),
           pruning_months: cleanMonths(data.pruning_months || formData.pruning_months || ""),
           remarks: data.remarks || formData.remarks,
@@ -160,7 +163,7 @@ export default function PlantModal({
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title={isEditing ? (formData.common_name || "Plant Bewerken") : "Nieuwe Plant"}
+      title={isEditing ? (formData.common_name || t('editPlant')) : t('newPlant')}
       maxWidth="max-w-4xl"
     >
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -178,17 +181,17 @@ export default function PlantModal({
               ) : (
                 <span className="material-symbols-outlined">auto_awesome</span>
               )}
-              {isAiLoading ? "Analyseren..." : "Vul aan met AI"}
+              {isAiLoading ? t('analyzing') : t('fillWithAi')}
             </button>
           )}
 
           <form id="plant-form" onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Wetenschappelijke Naam</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('scientificName')}</label>
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Lavandula angustifolia"
+                  placeholder={t('scientificNameExample')}
                   className="flex-grow p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                   value={formData.scientific_name || ""}
                   onChange={(e) => setFormData({ ...formData, scientific_name: e.target.value })}
@@ -207,10 +210,10 @@ export default function PlantModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Nederlandse Naam</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('commonName')}</label>
               <input
                 type="text"
-                placeholder="Echte Lavendel"
+                placeholder={t('commonNameExample')}
                 className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                 value={formData.common_name || ""}
                 onChange={(e) => setFormData({ ...formData, common_name: e.target.value })}
@@ -219,10 +222,10 @@ export default function PlantModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Locatie in Tuin</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('locationInGarden')}</label>
               <input
                 type="text"
-                placeholder="Zonnige border, noordzijde"
+                placeholder={t('locationExample')}
                 className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                 value={formData.location_in_garden || ""}
                 onChange={(e) => setFormData({ ...formData, location_in_garden: e.target.value })}
@@ -231,20 +234,20 @@ export default function PlantModal({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Bloei (bijv. 4,5,6)</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('bloomMonths')}</label>
                 <input
                   type="text"
-                  placeholder="maanden"
+                  placeholder={t('monthsPlaceholder')}
                   className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                   value={formData.flowering_months || ""}
                   onChange={(e) => setFormData({ ...formData, flowering_months: e.target.value })}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Snoei (bijv. 3,10)</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('pruningMonths')}</label>
                 <input
                   type="text"
-                  placeholder="maanden"
+                  placeholder={t('monthsPlaceholder')}
                   className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                   value={formData.pruning_months || ""}
                   onChange={(e) => setFormData({ ...formData, pruning_months: e.target.value })}
@@ -253,9 +256,9 @@ export default function PlantModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Opmerkingen</label>
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('remarks')}</label>
               <textarea
-                placeholder="Extra informatie..."
+                placeholder={t('extraInfoPlaceholder')}
                 rows={3}
                 className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all font-medium text-on-surface"
                 value={formData.remarks || ""}
@@ -268,7 +271,7 @@ export default function PlantModal({
         {/* Right Side: Media & Info */}
         <div className="space-y-6">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Foto</label>
+            <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('photo')}</label>
             <div className="relative aspect-square w-full rounded-2xl bg-surface-container-low overflow-hidden group border border-outline-variant/10 shadow-inner">
               {imagePreview ? (
                 <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
@@ -279,12 +282,12 @@ export default function PlantModal({
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-outline">
                   <span className="material-symbols-outlined text-6xl">photo_camera</span>
-                  <span className="text-xs font-bold uppercase mt-2">Geen foto</span>
+                  <span className="text-xs font-bold uppercase mt-2">{t('noPhoto')}</span>
                 </div>
               )}
               <label className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white font-bold text-sm gap-2 backdrop-blur-sm">
                 <span className="material-symbols-outlined">add_a_photo</span>
-                { (selectedFile || formData.image_path || formData.image_url) ? "Wijzigen" : "Uploaden" }
+                { (selectedFile || formData.image_path || formData.image_url) ? t('change') : t('upload') }
                 <input 
                   type="file" 
                   className="hidden" 
@@ -298,7 +301,7 @@ export default function PlantModal({
           {showSearchResults && searchResults.length > 0 && (
             <div className="bg-surface-container-low p-4 rounded-2xl border border-outline-variant/10">
               <div className="flex justify-between items-center mb-4 px-2">
-                <h3 className="text-xs font-bold text-outline uppercase tracking-widest">Gevonden planten</h3>
+                <h3 className="text-xs font-bold text-outline uppercase tracking-widest">{t('searchResults')}</h3>
                 <button onClick={() => setShowSearchResults(false)} className="text-outline hover:text-on-surface">
                   <span className="material-symbols-outlined text-sm">close</span>
                 </button>
@@ -336,7 +339,7 @@ export default function PlantModal({
               ) : (
                 <>
                   <span className="material-symbols-outlined">save</span>
-                  <span>Opslaan</span>
+                  <span>{t('save')}</span>
                 </>
               )}
             </button>
@@ -345,7 +348,7 @@ export default function PlantModal({
               onClick={onClose}
               className="w-full bg-surface-container-high text-on-surface-variant p-4 rounded-xl font-bold hover:bg-surface-container-highest transition-all active:scale-95"
             >
-              Annuleren
+              {t('cancel')}
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import React from "react";
 import Modal from "./Modal";
+import { useTranslations } from "next-intl";
 
 interface Plant {
   id: number;
@@ -41,13 +42,14 @@ export default function PlantInfoModal({
   API_URL,
   showAdminOptions = false
 }: PlantInfoModalProps) {
+  const t = useTranslations('Common');
   if (!plant) return null;
 
   return (
     <Modal 
       isOpen={isOpen} 
       onClose={onClose} 
-      title={plant.common_name || "Plant Informatie"}
+      title={plant.common_name || t('plantInfo')}
       maxWidth="max-w-3xl"
     >
       <div className="flex flex-col md:flex-row gap-8">
@@ -61,7 +63,7 @@ export default function PlantInfoModal({
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center text-outline">
                 <span className="material-symbols-outlined text-6xl opacity-20">leaf</span>
-                <span className="text-xs font-bold uppercase tracking-widest mt-2">Geen foto</span>
+                <span className="text-xs font-bold uppercase tracking-widest mt-2">{t('noPhoto')}</span>
               </div>
             )}
           </div>
@@ -72,14 +74,14 @@ export default function PlantInfoModal({
               className="flex items-center gap-2 px-6 py-3 bg-secondary-container/20 text-secondary rounded-xl font-bold hover:bg-secondary-container/40 transition-all active:scale-95"
             >
               <span className="material-symbols-outlined text-xl">edit</span>
-              Bewerken
+              {t('edit')}
             </button>
             <button 
               onClick={() => onDelete(plant.id)}
               className="flex items-center gap-2 px-6 py-3 bg-error-container text-error rounded-xl font-bold hover:bg-error-container/40 transition-all active:scale-95"
             >
               <span className="material-symbols-outlined text-xl">delete</span>
-              Verwijderen
+              {t('delete')}
             </button>
           </div>
         </div>
@@ -87,15 +89,15 @@ export default function PlantInfoModal({
         {/* Right: Info */}
         <div className="w-full md:w-1/2 space-y-6">
           <div>
-            <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-1 px-1">Wetenschappelijk</h3>
-            <p className="text-xl font-bold text-on-surface italic">{plant.scientific_name || "Onbekend"}</p>
+            <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-1 px-1">{t('scientific')}</h3>
+            <p className="text-xl font-bold text-on-surface italic">{plant.scientific_name || t('unknown')}</p>
           </div>
 
           <div>
-            <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-1 px-1">Locatie</h3>
+            <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-1 px-1">{t('location')}</h3>
             <p className="flex items-center gap-2 text-lg font-bold text-on-surface">
               <span className="material-symbols-outlined text-primary">location_on</span>
-              {plant.location_in_garden || "Niet opgegeven"}
+              {plant.location_in_garden || t('notSpecified')}
             </p>
           </div>
 
@@ -103,14 +105,14 @@ export default function PlantInfoModal({
             <div className="bg-primary/5 p-4 rounded-xl border border-primary/10">
                <div className="flex items-center gap-2 text-primary mb-1">
                  <span className="material-symbols-outlined text-xl">filter_vintage</span>
-                 <span className="text-[10px] font-bold uppercase tracking-widest">Bloei</span>
+                 <span className="text-[10px] font-bold uppercase tracking-widest">{t('bloom')}</span>
                </div>
                <p className="text-lg font-bold text-on-surface">{plant.flowering_months || "—"}</p>
             </div>
             <div className="bg-secondary/5 p-4 rounded-xl border border-secondary/10">
                <div className="flex items-center gap-2 text-secondary mb-1">
                  <span className="material-symbols-outlined text-xl">content_cut</span>
-                 <span className="text-[10px] font-bold uppercase tracking-widest">Snoei</span>
+                 <span className="text-[10px] font-bold uppercase tracking-widest">{t('pruning')}</span>
                </div>
                <p className="text-lg font-bold text-on-surface">{plant.pruning_months || "—"}</p>
             </div>
@@ -118,7 +120,7 @@ export default function PlantInfoModal({
 
           {plant.remarks && (
             <div>
-              <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-2 px-1">Opmerkingen</h3>
+              <h3 className="text-xs font-bold text-outline uppercase tracking-widest mb-2 px-1">{t('remarks')}</h3>
               <div className="bg-surface-container-low p-4 rounded-xl border border-outline-variant/10 italic text-on-surface-variant leading-relaxed text-sm">
                 "{plant.remarks}"
               </div>
@@ -133,7 +135,7 @@ export default function PlantInfoModal({
               className="flex items-center gap-2 text-xs font-bold text-outline hover:text-primary transition-colors"
             >
               <span className="material-symbols-outlined text-sm">open_in_new</span>
-              Zoek op Google
+              {t('searchOnGoogle')}
             </a>
             
             {showAdminOptions && (
@@ -143,7 +145,7 @@ export default function PlantInfoModal({
                   className="flex items-center gap-2 text-xs font-bold text-outline hover:text-secondary transition-colors"
                 >
                   <span className="material-symbols-outlined text-sm">code</span>
-                  Ruwe Data
+                  {t('rawData')}
                 </button>
                 {onMove && (
                   <button 

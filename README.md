@@ -1,8 +1,8 @@
-# 🌿 TuinKalender
+# 🌿 Plan-te
 
-TuinKalender is een moderne, containerized webapplicatie waarmee je jouw tuin en planten moeiteloos kunt beheren. Met integraties van Trefle.io voor plantgegevens en OpenRouter voor slimme AI-tuinadviezen, heb je altijd een persoonlijk jaaroverzicht van wat er in jouw tuin moet gebeuren.
+Plan-te is een moderne, containerized webapplicatie waarmee je jouw tuin en planten moeiteloos kunt beheren. Met integraties van Trefle.io voor plantgegevens en OpenRouter voor slimme AI-tuinadviezen, heb je altijd een persoonlijk jaaroverzicht van wat er in jouw tuin moet gebeuren.
 
-![TuinKalender Hero](frontend/public/hero-preview.png) *(Voeg hier later een screenshot toe)*
+![Plan-te Hero](frontend/public/hero-preview.png) *(Voeg hier later een screenshot toe)*
 
 ## ✨ Kenmerken
 

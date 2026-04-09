@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function AdminPage() {
+  const t = useTranslations('Common');
+  const tAdmin = useTranslations('Admin');
   const { data: session, status } = useSession();
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
@@ -76,7 +79,7 @@ export default function AdminPage() {
 
   const toggleAdmin = async (user: any) => {
     if (user.email === session?.user?.email) {
-        alert("U kunt uw eigen admin rechten niet intrekken.");
+        alert(tAdmin("revokeSelfError"));
         return;
     }
     try {
@@ -109,15 +112,15 @@ export default function AdminPage() {
         body: JSON.stringify({ email: inviteEmail })
       });
       if (response.ok) {
-        setMessage({ type: 'success', text: `Uitnodiging verstuurd naar ${inviteEmail}` });
+        setMessage({ type: 'success', text: tAdmin("inviteSuccess", { email: inviteEmail }) });
         setInviteEmail("");
         fetchUsers();
       } else {
         const data = await response.json();
-        setMessage({ type: 'error', text: data.detail || "Fout bij uitnodigen." });
+        setMessage({ type: 'error', text: data.detail || tAdmin("inviteError") });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: "Server onbereikbaar." });
+      setMessage({ type: 'error', text: t('serverUnreachable') });
     }
   };
 
@@ -126,7 +129,7 @@ export default function AdminPage() {
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="text-center">
           <span className="material-symbols-outlined text-primary text-6xl animate-spin">progress_activity</span>
-          <p className="mt-4 text-on-surface font-bold">Verifiëren...</p>
+          <p className="mt-4 text-on-surface font-bold">{tAdmin('verifying')}</p>
         </div>
       </div>
     );
@@ -135,17 +138,17 @@ export default function AdminPage() {
   return (
     <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
       <section className="mb-12">
-        <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Systeem</span>
-        <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">Beheer</h2>
+        <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{tAdmin('system')}</span>
+        <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{tAdmin('title')}</h2>
       </section>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* User Management */}
         <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between px-2">
-            <h3 className="font-headline text-2xl font-bold">Gebruikers</h3>
+            <h3 className="font-headline text-2xl font-bold">{tAdmin('users')}</h3>
             <span className="bg-surface-container-lowest border border-outline-variant/15 px-3 py-1 rounded-full text-xs font-medium text-on-surface-variant uppercase tracking-wider">
-              {users.length} Totaal
+              {users.length} {t('total')}
             </span>
           </div>
 
@@ -154,10 +157,10 @@ export default function AdminPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-surface-container-high/50 border-b border-outline-variant/10">
-                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-outline">Gebruiker</th>
-                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">Status</th>
-                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">Admin</th>
-                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-right text-outline">Actie</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-outline">{tAdmin('user')}</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">{tAdmin('status')}</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">{tAdmin('admin')}</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-right text-outline">{tAdmin('action')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant/10">
@@ -169,18 +172,18 @@ export default function AdminPage() {
                             {user.image ? <img src={user.image} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-outline"><span className="material-symbols-outlined">person</span></div>}
                           </div>
                           <div className="min-w-0">
-                            <div className="text-sm font-bold text-on-surface truncate">{user.name || 'Onbekend'}</div>
+                            <div className="text-sm font-bold text-on-surface truncate">{user.name || t('unknown')}</div>
                             <div className="text-[10px] text-outline truncate">{user.email}</div>
                           </div>
                         </div>
                       </td>
                       <td className="p-4 text-center">
-                        <button onClick={() => toggleStatus(user)} className={`p-1.5 rounded-lg transition-all ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}`} title={user.is_active ? "Deactiveren" : "Activeren"}>
+                        <button onClick={() => toggleStatus(user)} className={`p-1.5 rounded-lg transition-all ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}`} title={user.is_active ? tAdmin("deactivate") : tAdmin("activate")}>
                           <span className="material-symbols-outlined text-[20px]">{user.is_active ? 'check_circle' : 'cancel'}</span>
                         </button>
                       </td>
                       <td className="p-4 text-center">
-                        <button onClick={() => toggleAdmin(user)} className={`p-1.5 rounded-lg transition-all ${user.is_admin ? 'bg-secondary/10 text-secondary' : 'bg-outline/10 text-outline'}`} title={user.is_admin ? "Ontneem Admin" : "Maak Admin"}>
+                        <button onClick={() => toggleAdmin(user)} className={`p-1.5 rounded-lg transition-all ${user.is_admin ? 'bg-secondary/10 text-secondary' : 'bg-outline/10 text-outline'}`} title={user.is_admin ? tAdmin("revokeAdmin") : tAdmin("makeAdmin")}>
                           <span className="material-symbols-outlined text-[20px]">{user.is_admin ? 'shield' : 'person'}</span>
                         </button>
                       </td>
@@ -197,14 +200,14 @@ export default function AdminPage() {
 
         {/* Invite Area */}
         <div className="lg:col-span-4 space-y-6">
-          <h3 className="font-headline text-2xl font-bold px-2">Nodig uit</h3>
+          <h3 className="font-headline text-2xl font-bold px-2">{tAdmin('invite')}</h3>
           <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
             <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-              Voeg een e-mailadres toe om een nieuwe gebruiker toegang te geven tot het systeem.
+              {tAdmin('inviteDescription')}
             </p>
             <form onSubmit={inviteUser} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">E-mailadres</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tAdmin('emailAddress')}</label>
                 <input
                   type="email"
                   placeholder="naam@gmail.com"
@@ -219,7 +222,7 @@ export default function AdminPage() {
                 className="w-full bg-secondary text-white p-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-secondary/20 active:scale-95"
               >
                 <span className="material-symbols-outlined">person_add</span>
-                <span>Uitnodigen</span>
+                <span>{tAdmin('invite')}</span>
               </button>
             </form>
 
@@ -233,9 +236,9 @@ export default function AdminPage() {
 
           <div className="bg-primary-container/10 rounded-2xl p-6 relative overflow-hidden">
             <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">admin_panel_settings</span>
-            <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">Beheer Tip</h5>
+            <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">{tAdmin('adminTip')}</h5>
             <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
-              Alleen actieve gebruikers kunnen inloggen. Gebruikers die nog niet in het systeem staan, moeten eerst worden uitgenodigd.
+              {tAdmin('adminTipDescription')}
             </p>
           </div>
         </div>

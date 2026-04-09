@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/routing";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useTranslations, useLocale } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 export default function Navbar() {
+  const t = useTranslations('Common');
+  const locale = useLocale();
+  const router = useRouter();
   const { data: session } = useSession();
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -21,6 +24,10 @@ export default function Navbar() {
       setIsAuthorized(false);
     }
   }, [session]);
+
+  const onLocaleChange = (newLocale: string) => {
+    router.replace(pathname, { locale: newLocale });
+  };
 
   const checkUserStatus = async () => {
     if (!session?.accessToken) return;
@@ -58,9 +65,20 @@ export default function Navbar() {
       <header className="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl flex justify-between items-center px-6 py-4">
         <Link href="/" className="flex items-center gap-3">
           <span className="material-symbols-outlined text-primary" style={{ fontSize: '28px' }}>park</span>
-          <h1 className="font-headline font-bold tracking-tight text-2xl text-primary">TuinKalender</h1>
+          <h1 className="font-headline font-bold tracking-tight text-2xl text-primary">{t('appName')}</h1>
         </Link>
         <div className="flex items-center gap-4">
+          {/* Language Switcher */}
+          <select 
+            value={locale}
+            onChange={(e) => onLocaleChange(e.target.value)}
+            className="bg-transparent text-on-surface-variant text-sm font-semibold cursor-pointer focus:outline-none hover:opacity-80 transition-opacity"
+          >
+            <option value="en">EN</option>
+            <option value="nl">NL</option>
+            <option value="fr">FR</option>
+          </select>
+
           {session && (
             <>
               <Link href="/settings" className="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-200">
@@ -84,7 +102,7 @@ export default function Navbar() {
               className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
             >
               <span className="material-symbols-outlined">login</span>
-              <span className="hidden sm:inline">Inloggen</span>
+              <span className="hidden sm:inline">{t('login')}</span>
             </button>
           )}
         </div>

@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL || "google/gemini-2.0-flash-lite-preview-02-05:free";
 
 export default function SettingsPage() {
+  const t = useTranslations('Common');
+  const tSettings = useTranslations('Settings');
   const { data: session } = useSession();
   const [userName, setUserName] = useState("");
   const [trefleToken, setTrefleToken] = useState("");
@@ -71,12 +74,12 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: "Instellingen succesvol opgeslagen!" });
+        setMessage({ type: 'success', text: tSettings('saveSuccess') });
       } else {
-        setMessage({ type: 'error', text: "Er ging iets mis bij het opslaan." });
+        setMessage({ type: 'error', text: tSettings('saveError') });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: "Server onbereikbaar." });
+      setMessage({ type: 'error', text: tSettings('serverUnreachable') });
     } finally {
       setIsSaving(false);
     }
@@ -87,7 +90,7 @@ export default function SettingsPage() {
       <div className="min-h-screen flex items-center justify-center bg-surface">
         <div className="text-center">
           <span className="material-symbols-outlined text-outline text-6xl mb-4">lock</span>
-          <h1 className="text-2xl font-bold text-on-surface">Log in om uw instellingen te beheren.</h1>
+          <h1 className="text-2xl font-bold text-on-surface">{tSettings('loginToManage')}</h1>
         </div>
       </div>
     );
@@ -96,8 +99,8 @@ export default function SettingsPage() {
   return (
     <main className="pt-24 pb-32 px-6 max-w-2xl mx-auto">
       <section className="mb-12">
-        <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Account</span>
-        <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">Instellingen</h2>
+        <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{tSettings('account')}</span>
+        <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{tSettings('title')}</h2>
       </section>
 
       <div className="space-y-8">
@@ -112,28 +115,28 @@ export default function SettingsPage() {
           <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
             <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">person</span>
-              Profiel
+              {tSettings('profile')}
             </h3>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Naam</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('name')}</label>
                 <input
                   type="text"
-                  placeholder="Uw volledige naam"
+                  placeholder={tSettings('yourFullName')}
                   className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">E-mail</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('email')}</label>
                 <input
                   type="email"
                   disabled
                   className="w-full p-4 bg-surface-container-high/50 border-none rounded-xl text-on-surface-variant font-medium cursor-not-allowed opacity-70"
                   value={session?.user?.email || ""}
                 />
-                <p className="text-[10px] text-outline px-1 mt-1">E-mailadres is gekoppeld aan uw Google-account.</p>
+                <p className="text-[10px] text-outline px-1 mt-1">{tSettings('emailLinked')}</p>
               </div>
             </div>
           </div>
@@ -141,20 +144,20 @@ export default function SettingsPage() {
           <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
             <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-primary">key</span>
-              Plantendatabase (Trefle.io)
+              {tSettings('plantDatabase')}
             </h3>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">API Token</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('apiToken')}</label>
                 <input
                   type="password"
-                  placeholder="Uw Trefle.io API token"
+                  placeholder={tSettings('apiToken')}
                   className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
                   value={trefleToken}
                   onChange={(e) => setTrefleToken(e.target.value)}
                 />
                 <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
-                  Verplicht voor het zoeken naar planten. Verkrijg een gratis token op <a href="https://trefle.io/" target="_blank" className="text-primary underline">trefle.io</a>.
+                  {tSettings('trefleHelp').split('trefle.io')[0]} <a href="https://trefle.io/" target="_blank" className="text-primary underline">trefle.io</a>.
                 </p>
               </div>
             </div>
@@ -163,11 +166,11 @@ export default function SettingsPage() {
           <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
             <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-secondary">auto_awesome</span>
-              AI & Automatisering
+              {tSettings('aiAutomation')}
             </h3>
             <div className="space-y-6">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">AI Provider</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('aiProvider')}</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
@@ -189,7 +192,7 @@ export default function SettingsPage() {
               {aiProvider === 'openrouter' ? (
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">OpenRouter API Key</label>
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('openrouterKey')}</label>
                     <input
                       type="password"
                       placeholder="sk-or-..."
@@ -199,7 +202,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Model ID</label>
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('modelId')}</label>
                     <input
                       type="text"
                       placeholder="google/gemini-2.0-flash-lite-preview-02-05:free"
@@ -212,7 +215,7 @@ export default function SettingsPage() {
               ) : (
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">OpenAI API Key</label>
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('openaiKey')}</label>
                     <input
                       type="password"
                       placeholder="sk-..."
@@ -222,7 +225,7 @@ export default function SettingsPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">Model Name</label>
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('modelName')}</label>
                     <input
                       type="text"
                       placeholder="gpt-4o-mini"
@@ -239,20 +242,20 @@ export default function SettingsPage() {
           <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
             <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
               <span className="material-symbols-outlined text-info">cloud</span>
-              Weer (OpenWeatherMap)
+              {tSettings('weatherOpenWeatherMap')}
             </h3>
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">API Key</label>
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('apiToken')}</label>
                 <input
                   type="password"
-                  placeholder="Uw OpenWeatherMap API key"
+                  placeholder={tSettings('openweathermapPlaceholder')}
                   className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
                   value={openweathermapKey}
                   onChange={(e) => setOpenweatherMapKey(e.target.value)}
                 />
                 <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
-                  Gebruikt voor weersverwachtingen en waarschuwingen per tuin. Verkrijg een gratis key op <a href="https://openweathermap.org/api" target="_blank" className="text-primary underline">openweathermap.org</a>.
+                  {tSettings('weatherHelp').split('openweathermap.org')[0]} <a href="https://openweathermap.org/api" target="_blank" className="text-primary underline">openweathermap.org</a>.
                 </p>
               </div>
             </div>
@@ -268,7 +271,7 @@ export default function SettingsPage() {
             ) : (
               <>
                 <span className="material-symbols-outlined">save</span>
-                <span>Instellingen Opslaan</span>
+                <span>{tSettings('saveSettings')}</span>
               </>
             )}
           </button>
