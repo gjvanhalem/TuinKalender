@@ -93,7 +93,8 @@
     "searchResults": "Zoekresultaten",
     "scientificNameExample": "Lavandula angustifolia",
     "commonNameExample": "Echte Lavendel",
-    "locationExample": "Zonnige border, noordzijde"
+    "locationExample": "Zonnige border, noordzijde",
+    "googleMapsKeyMissing": "Google Maps API sleutel ontbreekt. Controleer uw configuratie."
   },
   "Admin": {
     "verifying": "Verifiëren...",
@@ -119,8 +120,28 @@
   },
   "Settings": {
     "title": "Instellingen",
+    "onboarding": {
+      "welcome": "Welkom bij Plan-te!",
+      "description": "Je persoonlijke tuinassistent. Laten we je op weg helpen met de belangrijkste functies.",
+      "featureGardens": "Beheer meerdere tuinen, houd planten bij en deel toegang met anderen.",
+      "featureCalendar": "Een dynamische kalender die laat zien wanneer je moet snoeien, water geven of oogsten.",
+      "featureAi": "Krijg slim advies en automatische plantidentificatie met behulp van AI.",
+      "apiSetup": "Om alle functies te ontgrendelen, moet je enkele API-sleutels instellen in je instellingen.",
+      "trefleTitle": "Planten Database (Trefle)",
+      "trefleDesc": "Nodig om planten te zoeken en te identificeren. Haal een gratis token op trefle.io.",
+      "aiTitle": "AI Diensten (OpenRouter/OpenAI)",
+      "aiDesc": "Drijft de 'Vul aan met AI' en 'Slim Advies' functies aan. We raden OpenRouter aan.",
+      "weatherTitle": "Weer (OpenWeatherMap)",
+      "weatherDesc": "Maakt lokale weersverwachtingen en tuinspecifiek advies mogelijk. Haal een gratis sleutel op openweathermap.org.",
+      "goToSettings": "Naar Instellingen",
+      "skipForNow": "Nu overslaan",
+      "finish": "Aan de slag!",
+      "next": "Volgende",
+      "back": "Terug"
+    },
     "account": "Account",
     "name": "Naam",
+    "language": "Taal",
     "trefleToken": "Trefle API Token",
     "openrouterKey": "OpenRouter API Key",
     "openrouterModel": "OpenRouter Model",

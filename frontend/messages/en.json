@@ -93,7 +93,8 @@
     "searchResults": "Search Results",
     "scientificNameExample": "Lavandula angustifolia",
     "commonNameExample": "English Lavender",
-    "locationExample": "Sunny border, north side"
+    "locationExample": "Sunny border, north side",
+    "googleMapsKeyMissing": "Google Maps API key is missing. Please check your configuration."
   },
   "Admin": {
     "verifying": "Verifying...",
@@ -119,8 +120,28 @@
   },
   "Settings": {
     "title": "Settings",
+    "onboarding": {
+      "welcome": "Welcome to Plan-te!",
+      "description": "Your personal gardening assistant. Let's get you set up with the basic features.",
+      "featureGardens": "Manage multiple gardens, track plants, and share access with others.",
+      "featureCalendar": "A dynamic calendar showing when to prune, water, or harvest based on your plants.",
+      "featureAi": "Get smart advice and automated plant identification using AI.",
+      "apiSetup": "To unlock all features, you need to set up some API keys in your settings.",
+      "trefleTitle": "Plant Database (Trefle)",
+      "trefleDesc": "Needed to search and identify plants. Get a free token at trefle.io.",
+      "aiTitle": "AI Services (OpenRouter/OpenAI)",
+      "aiDesc": "Power the 'Fill with AI' and 'Smart Advice' features. We recommend OpenRouter for access to multiple models.",
+      "weatherTitle": "Weather (OpenWeatherMap)",
+      "weatherDesc": "Enables local weather forecasts and garden-specific advice. Get a free key at openweathermap.org.",
+      "goToSettings": "Take me to Settings",
+      "skipForNow": "Skip for now",
+      "finish": "Let's Start!",
+      "next": "Next",
+      "back": "Back"
+    },
     "account": "Account",
     "name": "Name",
+    "language": "Language",
     "trefleToken": "Trefle API Token",
     "openrouterKey": "OpenRouter API Key",
     "openrouterModel": "OpenRouter Model",

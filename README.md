@@ -85,7 +85,7 @@ chmod +x backup.sh
 | `TREFLE_API_TOKEN` | Your personal token from Trefle.io |
 | `OPENROUTER_API_KEY` | *(Optional)* Key for AI integration |
 | `OPENWEATHER_API_KEY` | *(Optional)* Key for weather data |
-| `GOOGLE_MAPS_API_KEY` | *(Optional)* System key for map features |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | *(Optional)* System key for map features |
 
 ## 🏗️ Tech Stack
 

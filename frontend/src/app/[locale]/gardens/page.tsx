@@ -111,18 +111,15 @@ export default function GardensPage() {
     setMap(newMap);
   };
 
-  const handleMapClick = async (lat: number, lng: number) => {
+  const handleMapClick = (lat: number, lng: number) => {
     setNewGardenLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
-    if (GOOGLE_MAPS_API_KEY) {
-      try {
-        const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`);
-        const data = await res.json();
-        if (data.results && data.results[0]) {
-          setNewGardenLocation(data.results[0].formatted_address);
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+        if (status === "OK" && results[0]) {
+          setNewGardenLocation(results[0].formatted_address);
         }
-      } catch (e) {
-        console.error("Reverse geocoding failed", e);
-      }
+      });
     }
   };
 
@@ -134,22 +131,21 @@ export default function GardensPage() {
 
     setIsLocating(true);
     navigator.geolocation.getCurrentPosition(
-      async (position) => {
+      (position) => {
         const { latitude, longitude } = position.coords;
         setNewGardenLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
         
-        if (GOOGLE_MAPS_API_KEY) {
-          try {
-            const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_MAPS_API_KEY}`);
-            const data = await res.json();
-            if (data.results && data.results[0]) {
-              setNewGardenLocation(data.results[0].formatted_address);
+        if (window.google && window.google.maps) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any, status: any) => {
+            if (status === "OK" && results[0]) {
+              setNewGardenLocation(results[0].formatted_address);
             }
-          } catch (e) {
-            console.error("Reverse geocoding failed", e);
-          }
+            setIsLocating(false);
+          });
+        } else {
+          setIsLocating(false);
         }
-        setIsLocating(false);
       },
       (error) => {
         console.error("Error getting location", error);
@@ -557,8 +553,14 @@ export default function GardensPage() {
               </div>
               
               {showMapPicker && (
-                <div className="mt-2 overflow-hidden rounded-xl border border-outline-variant/20 h-64">
-                  <div ref={mapRef} className="w-full h-full" />
+                <div className="mt-2 overflow-hidden rounded-xl border border-outline-variant/20 h-64 relative">
+                  {GOOGLE_MAPS_API_KEY ? (
+                    <div ref={mapRef} className="w-full h-full" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-surface-container-low text-on-surface-variant p-6 text-center">
+                      <p className="text-sm">{t('googleMapsKeyMissing') || 'Google Maps API key is missing. Please check your configuration.'}</p>
+                    </div>
+                  )}
                 </div>
               )}
               

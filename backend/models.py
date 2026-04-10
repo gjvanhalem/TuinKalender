@@ -22,6 +22,8 @@ class User(SQLModel, table=True):
     openai_model: Optional[str] = Field(default="gpt-4o-mini")
     openweathermap_key: Optional[str] = None
     ai_provider: str = Field(default="openrouter") # "openrouter" or "openai"
+    preferred_language: str = Field(default="en")
+    has_onboarded: bool = Field(default=False)
     
     gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shared_gardens: List["Garden"] = Relationship(back_populates="shared_users", link_model=GardenAccess)

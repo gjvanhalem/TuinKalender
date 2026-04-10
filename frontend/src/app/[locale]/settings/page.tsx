@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { useRouter, usePathname } from "@/i18n/routing";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const DEFAULT_MODEL = process.env.NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL || "google/gemini-2.0-flash-lite-preview-02-05:free";
@@ -11,7 +12,12 @@ export default function SettingsPage() {
   const t = useTranslations('Common');
   const tSettings = useTranslations('Settings');
   const { data: session } = useSession();
+  const currentLocale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
+  
   const [userName, setUserName] = useState("");
+  const [preferredLanguage, setPreferredLanguage] = useState(currentLocale);
   const [trefleToken, setTrefleToken] = useState("");
   const [openrouterKey, setOpenrouterKey] = useState("");
   const [openrouterModel, setOpenrouterModel] = useState(DEFAULT_MODEL);
@@ -36,6 +42,7 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setUserName(data.name || "");
+        setPreferredLanguage(data.preferred_language || currentLocale);
         setTrefleToken(data.trefle_token || "");
         setOpenrouterKey(data.openrouter_key || "");
         setOpenrouterModel(data.openrouter_model || DEFAULT_MODEL);
@@ -63,6 +70,7 @@ export default function SettingsPage() {
         },
         body: JSON.stringify({
           name: userName,
+          preferred_language: preferredLanguage,
           trefle_token: trefleToken,
           openrouter_key: openrouterKey,
           openrouter_model: openrouterModel,
@@ -75,6 +83,9 @@ export default function SettingsPage() {
 
       if (response.ok) {
         setMessage({ type: 'success', text: tSettings('saveSuccess') });
+        if (preferredLanguage !== currentLocale) {
+          router.replace(pathname, { locale: preferredLanguage as any });
+        }
       } else {
         setMessage({ type: 'error', text: tSettings('saveError') });
       }
@@ -127,6 +138,18 @@ export default function SettingsPage() {
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                 />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('language')}</label>
+                <select
+                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium appearance-none"
+                  value={preferredLanguage}
+                  onChange={(e) => setPreferredLanguage(e.target.value)}
+                >
+                  <option value="en">English</option>
+                  <option value="nl">Nederlands</option>
+                  <option value="fr">Français</option>
+                </select>
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('email')}</label>

@@ -58,6 +58,8 @@ def update_user_me(user_data: User, current_user: User = Depends(get_current_use
     db_user.openai_model = user_data.openai_model
     db_user.openweathermap_key = user_data.openweathermap_key
     db_user.ai_provider = user_data.ai_provider
+    db_user.preferred_language = user_data.preferred_language
+    db_user.has_onboarded = user_data.has_onboarded
     
     session.add(db_user)
     session.commit()

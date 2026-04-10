@@ -103,7 +103,7 @@ export default function AdminPage() {
     setMessage(null);
 
     try {
-      const response = await fetch(`${API_URL}/admin/invite`, {
+      const response = await fetch(`${API_URL}/admin/users/invite`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 

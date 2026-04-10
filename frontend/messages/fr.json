@@ -93,7 +93,8 @@
     "searchResults": "Résultats de recherche",
     "scientificNameExample": "Lavandula angustifolia",
     "commonNameExample": "Lavande vraie",
-    "locationExample": "Bordure ensoleillée, côté nord"
+    "locationExample": "Bordure ensoleillée, côté nord",
+    "googleMapsKeyMissing": "La clé API Google Maps est manquante. Veuillez vérifier votre configuration."
   },
   "Admin": {
     "verifying": "Vérification...",
@@ -119,8 +120,28 @@
   },
   "Settings": {
     "title": "Paramètres",
+    "onboarding": {
+      "welcome": "Bienvenue sur Plan-te !",
+      "description": "Votre assistant de jardinage personnel. Configurons ensemble les fonctionnalités de base.",
+      "featureGardens": "Gérez plusieurs jardins, suivez vos plantes et partagez l'accès avec d'autres.",
+      "featureCalendar": "Un calendrier dynamique indiquant quand tailler, arroser ou récolter.",
+      "featureAi": "Obtenez des conseils intelligents et une identification automatique des plantes grâce à l'IA.",
+      "apiSetup": "Pour débloquer toutes les fonctionnalités, vous devez configurer certaines clés API dans vos paramètres.",
+      "trefleTitle": "Base de données des plantes (Trefle)",
+      "trefleDesc": "Nécessaire pour rechercher et identifier les plantes. Obtenez un jeton gratuit sur trefle.io.",
+      "aiTitle": "Services d'IA (OpenRouter/OpenAI)",
+      "aiDesc": "Alimente les fonctions 'Remplir avec l'IA' et 'Conseils intelligents'. Nous recommandons OpenRouter.",
+      "weatherTitle": "Météo (OpenWeatherMap)",
+      "weatherDesc": "Active les prévisions météo locales et les conseils spécifiques au jardin. Obtenez une clé gratuite sur openweathermap.org.",
+      "goToSettings": "Aller aux paramètres",
+      "skipForNow": "Passer pour le moment",
+      "finish": "C'est parti !",
+      "next": "Suivant",
+      "back": "Retour"
+    },
     "account": "Compte",
     "name": "Nom",
+    "language": "Langue",
     "trefleToken": "Jeton API Trefle",
     "openrouterKey": "Clé API OpenRouter",
     "openrouterModel": "Modèle OpenRouter",
