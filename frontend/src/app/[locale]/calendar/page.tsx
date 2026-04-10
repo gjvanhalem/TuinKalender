@@ -76,7 +76,7 @@ export default function CalendarPage() {
     tMonths('1'), tMonths('2'), tMonths('3'), tMonths('4'), tMonths('5'), tMonths('6'),
     tMonths('7'), tMonths('8'), tMonths('9'), tMonths('10'), tMonths('11'), tMonths('12')
   ];
-  const [tasks, setTasks] = useState<Task[]>(calendarCache?.tasks || []);
+  const [tasks, setTasks] = useState<any[]>(calendarCache?.tasks || []);
   const [allYearTasks, setAllYearTasks] = useState<any[]>(calendarCache?.allYearTasks || []);
   const [gardens, setGardens] = useState<any[]>(calendarCache?.gardens || []);
   const [selectedGardenId, setSelectedGardenId] = useState<string>("all");
@@ -281,7 +281,7 @@ export default function CalendarPage() {
       });
       if (response.ok) {
         // Correct optimistic update for grouped task structure
-        setTasks(prev => prev.map(group => ({
+        setTasks((prev: any[]) => prev.map(group => ({
           ...group,
           tasks: group.tasks.map((t: any) => t.id === taskId ? { ...t, is_completed: !t.is_completed } : t)
         })));

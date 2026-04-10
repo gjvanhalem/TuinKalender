@@ -41,10 +41,9 @@ services:
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY}
       NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL: ${NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL}
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-      - /app/.next
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   postgres_data:
