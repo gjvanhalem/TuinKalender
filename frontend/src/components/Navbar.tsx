@@ -73,11 +73,11 @@ export default function Navbar() {
           <select 
             value={locale}
             onChange={(e) => onLocaleChange(e.target.value)}
-            className="bg-transparent text-on-surface-variant text-sm font-semibold cursor-pointer focus:outline-none hover:opacity-80 transition-opacity"
+            className="bg-surface-container-high text-on-surface-variant text-sm font-semibold cursor-pointer focus:outline-none hover:opacity-80 transition-opacity rounded-lg px-2 py-1 appearance-none"
           >
-            <option value="en">EN</option>
-            <option value="nl">NL</option>
-            <option value="fr">FR</option>
+            <option value="en" className="bg-surface text-on-surface">EN</option>
+            <option value="nl" className="bg-surface text-on-surface">NL</option>
+            <option value="fr" className="bg-surface text-on-surface">FR</option>
           </select>
 
           {session && (
