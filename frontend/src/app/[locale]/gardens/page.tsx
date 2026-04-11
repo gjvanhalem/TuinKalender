@@ -166,6 +166,12 @@ export default function GardensPage() {
         const finalData = Array.isArray(data) ? data : [];
         setGardens(finalData);
         gardensCache = finalData;
+
+        // Requirement: If there is only one garden, directly open it
+        if (finalData.length === 1 && !isLoading) {
+          router.replace(`/gardens/${finalData[0].id}`);
+          return;
+        }
         
         // Fetch weather for each garden that has a location
         finalData.forEach(async (garden: Garden) => {
@@ -324,18 +330,6 @@ export default function GardensPage() {
             <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{t('myCollection')}</span>
             <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{t('gardens')}</h2>
           </div>
-          <button 
-            onClick={() => {
-              setEditingGarden(null);
-              setNewGardenName("");
-              setNewGardenLocation("");
-              setShowModal(true);
-            }}
-            className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
-          >
-            <span className="material-symbols-outlined">add</span>
-            <span>{t('newGarden')}</span>
-          </button>
         </div>
 
         <div className="relative group">
@@ -366,6 +360,12 @@ export default function GardensPage() {
           <div className="text-center py-20 bg-surface-container-low/50 rounded-3xl border-2 border-dashed border-outline-variant/20">
             <span className="material-symbols-outlined text-outline text-6xl mb-4">map</span>
             <p className="text-on-surface-variant font-medium">{t('noGardensAdded')}</p>
+            <Link 
+              href="/"
+              className="mt-6 inline-flex bg-primary text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all"
+            >
+              {t('backToDashboard')}
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

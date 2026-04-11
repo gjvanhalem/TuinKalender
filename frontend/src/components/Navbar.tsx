@@ -19,6 +19,10 @@ export default function Navbar() {
 
   useEffect(() => {
     if (session) {
+      if ((session as any).error === "Unauthorized") {
+        signOut({ callbackUrl: "/?error=unauthorized" });
+        return;
+      }
       checkUserStatus();
     } else {
       setIsAdmin(false);
@@ -39,13 +43,14 @@ export default function Navbar() {
       });
       
       if (response.status === 403) {
+        console.warn("User is not authorized or deactivated");
         signOut({ callbackUrl: "/?error=unauthorized" });
         return;
       }
 
       if (response.status === 401) {
         // Token might be invalid or expired
-        console.warn("Unauthorized access to /users/me");
+        console.warn("Unauthorized access to /users/me - session expired");
         signOut({ callbackUrl: "/?error=session_expired" });
         return;
       }
@@ -54,6 +59,9 @@ export default function Navbar() {
         const data = await response.json();
         setIsAdmin(data.is_admin);
         setIsAuthorized(true);
+      } else {
+        // Handle other non-ok responses
+        console.error("User check failed with status:", response.status);
       }
     } catch (error) {
       console.error("Auth check failed:", error);
@@ -117,21 +125,21 @@ export default function Navbar() {
             className={`flex flex-col items-center justify-center rounded-full transition-all p-2 ${pathname === '/' ? 'text-primary opacity-100 bg-primary/10' : 'text-on-surface opacity-60 hover:opacity-100 hover:bg-surface-container-low'}`}
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: pathname === '/' ? "'FILL' 1" : "" }}>home</span>
-            <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">Home</span>
+            <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">{t('home')}</span>
           </Link>
           <Link 
             href="/gardens" 
             className={`flex flex-col items-center justify-center rounded-full px-6 py-2 transition-all active:scale-90 duration-200 ${pathname.startsWith('/gardens') ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-on-surface opacity-60 hover:opacity-100 hover:bg-surface-container-low'}`}
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: pathname.startsWith('/gardens') ? "'FILL' 1" : "" }}>potted_plant</span>
-            <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">Tuinen</span>
+            <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">{t('gardens')}</span>
           </Link>
           <Link 
             href="/calendar" 
             className={`flex flex-col items-center justify-center rounded-full transition-all p-2 ${pathname === '/calendar' ? 'text-primary opacity-100 bg-primary/10' : 'text-on-surface opacity-60 hover:opacity-100 hover:bg-surface-container-low'}`}
           >
             <span className="material-symbols-outlined" style={{ fontVariationSettings: pathname === '/calendar' ? "'FILL' 1" : "" }}>calendar_month</span>
-            <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">Kalender</span>
+            <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">{t('calendar')}</span>
           </Link>
           {isAdmin && (
             <Link 
@@ -139,7 +147,7 @@ export default function Navbar() {
               className={`flex flex-col items-center justify-center rounded-full transition-all p-2 ${pathname === '/admin' ? 'text-secondary opacity-100 bg-secondary/10' : 'text-on-surface opacity-60 hover:opacity-100 hover:bg-surface-container-low'}`}
             >
               <span className="material-symbols-outlined" style={{ fontVariationSettings: pathname === '/admin' ? "'FILL' 1" : "" }}>shield</span>
-              <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">Beheer</span>
+              <span className="font-body text-[11px] font-medium tracking-wide uppercase mt-1">{t('admin')}</span>
             </Link>
           )}
         </nav>

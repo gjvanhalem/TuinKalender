@@ -12,6 +12,7 @@
     "viewCalendar": "Voir le Calendrier",
     "viewGardens": "Voir les Jardins",
     "getStarted": "Commencer",
+    "rememberMe": "Se souvenir de moi",
     "searchPlaceholder": "Chercher dans votre jardin...",
     "unauthorized": "Accès refusé. Vous n'avez pas (encore) été invité.",
     "plantInfo": "Informations sur la plante",
@@ -23,6 +24,7 @@
     "loading": "Chargement...",
     "search": "Rechercher...",
     "home": "Accueil",
+    "admin": "Admin",
     "myCollection": "Ma Collection",
     "total": "Total",
     "noLocation": "Pas de lieu",
@@ -117,7 +119,12 @@
     "adminTipDescription": "Seuls les utilisateurs actifs peuvent se connecter. Les utilisateurs qui ne sont pas encore dans le système doivent d'abord être invités.",
     "inviteSuccess": "Invitation envoyée à {email}",
     "inviteError": "Erreur lors de l'invitation.",
-    "revokeSelfError": "Vous ne pouvez pas révoquer vos propres droits d'administrateur."
+    "revokeSelfError": "Vous ne pouvez pas révoquer vos propres droits d'administrateur.",
+    "deleteUser": "Supprimer l'utilisateur",
+    "deleteConfirm": "Êtes-vous sûr de vouloir supprimer {email} ? Cela supprimera tous ses jardins, plantes et données.",
+    "deleteSuccess": "Utilisateur supprimé avec succès.",
+    "deleteError": "Erreur lors de la suppression de l'utilisateur.",
+    "deleteSelfError": "Vous ne pouvez pas supprimer votre propre compte."
   },
   "Settings": {
     "title": "Paramètres",
@@ -141,6 +148,9 @@
       "back": "Retour"
     },
     "account": "Compte",
+    "tabProfile": "Profil",
+    "tabAPIs": "Clés API",
+    "tabAI": "Automatisation AI",
     "name": "Nom",
     "language": "Langue",
     "trefleToken": "Jeton API Trefle",

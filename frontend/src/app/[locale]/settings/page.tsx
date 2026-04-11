@@ -25,6 +25,8 @@ export default function SettingsPage() {
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [openweathermapKey, setOpenweatherMapKey] = useState("");
   const [aiProvider, setAiProvider] = useState("openrouter");
+  const [hasOnboarded, setHasOnboarded] = useState(true);
+  const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
@@ -50,6 +52,7 @@ export default function SettingsPage() {
         setOpenaiModel(data.openai_model || "gpt-4o-mini");
         setOpenweatherMapKey(data.openweathermap_key || "");
         setAiProvider(data.ai_provider || "openrouter");
+        setHasOnboarded(data.has_onboarded ?? true);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -78,14 +81,21 @@ export default function SettingsPage() {
           openai_model: openaiModel,
           openweathermap_key: openweathermapKey,
           ai_provider: aiProvider,
+          has_onboarded: hasOnboarded,
         }),
       });
 
       if (response.ok) {
         setMessage({ type: 'success', text: tSettings('saveSuccess') });
-        if (preferredLanguage !== currentLocale) {
-          router.replace(pathname, { locale: preferredLanguage as any });
-        }
+        
+        // Short delay so the user can see the success message
+        setTimeout(() => {
+          if (preferredLanguage !== currentLocale) {
+            router.push("/", { locale: preferredLanguage as any });
+          } else {
+            router.push("/");
+          }
+        }, 1500);
       } else {
         setMessage({ type: 'error', text: tSettings('saveError') });
       }
@@ -122,167 +132,200 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <form onSubmit={saveSettings} className="space-y-8">
-          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
-            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">person</span>
-              {tSettings('profile')}
-            </h3>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('name')}</label>
-                <input
-                  type="text"
-                  placeholder={tSettings('yourFullName')}
-                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('language')}</label>
-                <select
-                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium appearance-none"
-                  value={preferredLanguage}
-                  onChange={(e) => setPreferredLanguage(e.target.value)}
-                >
-                  <option value="en">English</option>
-                  <option value="nl">Nederlands</option>
-                  <option value="fr">Français</option>
-                </select>
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('email')}</label>
-                <input
-                  type="email"
-                  disabled
-                  className="w-full p-4 bg-surface-container-high/50 border-none rounded-xl text-on-surface-variant font-medium cursor-not-allowed opacity-70"
-                  value={session?.user?.email || ""}
-                />
-                <p className="text-[10px] text-outline px-1 mt-1">{tSettings('emailLinked')}</p>
-              </div>
-            </div>
-          </div>
+        {/* Tab Navigation */}
+        <div className="flex bg-surface-container-low p-1.5 rounded-2xl border border-outline-variant/10 editorial-shadow">
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'profile' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+          >
+            <span className="material-symbols-outlined text-[20px]">person</span>
+            <span className="hidden sm:inline">{tSettings('tabProfile')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('apis')}
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'apis' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+          >
+            <span className="material-symbols-outlined text-[20px]">key</span>
+            <span className="hidden sm:inline">{tSettings('tabAPIs')}</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('ai')}
+            className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'ai' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-on-surface-variant hover:bg-surface-container-high'}`}
+          >
+            <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+            <span className="hidden sm:inline">{tSettings('tabAI')}</span>
+          </button>
+        </div>
 
-          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
-            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">key</span>
-              {tSettings('plantDatabase')}
-            </h3>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('apiToken')}</label>
-                <input
-                  type="password"
-                  placeholder={tSettings('apiToken')}
-                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
-                  value={trefleToken}
-                  onChange={(e) => setTrefleToken(e.target.value)}
-                />
-                <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
-                  {tSettings('trefleHelp').split('trefle.io')[0]} <a href="https://trefle.io/" target="_blank" className="text-primary underline">trefle.io</a>.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
-            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-secondary">auto_awesome</span>
-              {tSettings('aiAutomation')}
-            </h3>
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('aiProvider')}</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setAiProvider('openrouter')}
-                    className={`p-3 rounded-xl font-bold text-sm transition-all border ${aiProvider === 'openrouter' ? 'bg-secondary text-white border-secondary shadow-md' : 'bg-surface-container-high text-on-surface-variant border-transparent'}`}
+        <form onSubmit={saveSettings} className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+          {activeTab === 'profile' && (
+            <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow space-y-6">
+              <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">person</span>
+                {tSettings('profile')}
+              </h3>
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('name')}</label>
+                  <input
+                    type="text"
+                    placeholder={tSettings('yourFullName')}
+                    className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('language')}</label>
+                  <select
+                    className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium appearance-none"
+                    value={preferredLanguage}
+                    onChange={(e) => setPreferredLanguage(e.target.value)}
                   >
-                    OpenRouter
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setAiProvider('openai')}
-                    className={`p-3 rounded-xl font-bold text-sm transition-all border ${aiProvider === 'openai' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface-container-high text-on-surface-variant border-transparent'}`}
-                  >
-                    OpenAI
-                  </button>
+                    <option value="en">English</option>
+                    <option value="nl">Nederlands</option>
+                    <option value="fr">Français</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('email')}</label>
+                  <input
+                    type="email"
+                    disabled
+                    className="w-full p-4 bg-surface-container-high/50 border-none rounded-xl text-on-surface-variant font-medium cursor-not-allowed opacity-70"
+                    value={session?.user?.email || ""}
+                  />
+                  <p className="text-[10px] text-outline px-1 mt-1">{tSettings('emailLinked')}</p>
                 </div>
               </div>
+            </div>
+          )}
 
-              {aiProvider === 'openrouter' ? (
-                <div className="space-y-4 animate-in fade-in duration-300">
+          {activeTab === 'apis' && (
+            <div className="space-y-8">
+              <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
+                <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">key</span>
+                  {tSettings('plantDatabase')}
+                </h3>
+                <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('openrouterKey')}</label>
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('apiToken')}</label>
                     <input
                       type="password"
-                      placeholder="sk-or-..."
-                      className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all text-on-surface font-medium"
-                      value={openrouterKey}
-                      onChange={(e) => setOpenrouterKey(e.target.value)}
+                      placeholder={tSettings('apiToken')}
+                      className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                      value={trefleToken}
+                      onChange={(e) => setTrefleToken(e.target.value)}
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('modelId')}</label>
-                    <input
-                      type="text"
-                      placeholder="google/gemini-2.0-flash-lite-preview-02-05:free"
-                      className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all text-on-surface font-medium"
-                      value={openrouterModel}
-                      onChange={(e) => setOpenrouterModel(e.target.value)}
-                    />
+                    <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
+                      {tSettings('trefleHelp').split('trefle.io')[0]} <a href="https://trefle.io/" target="_blank" className="text-primary underline">trefle.io</a>.
+                    </p>
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-4 animate-in fade-in duration-300">
+              </div>
+
+              <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
+                <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-info">cloud</span>
+                  {tSettings('weatherOpenWeatherMap')}
+                </h3>
+                <div className="space-y-4">
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('openaiKey')}</label>
+                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('apiToken')}</label>
                     <input
                       type="password"
-                      placeholder="sk-..."
+                      placeholder={tSettings('openweathermapPlaceholder')}
                       className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
-                      value={openaiKey}
-                      onChange={(e) => setOpenaiKey(e.target.value)}
+                      value={openweathermapKey}
+                      onChange={(e) => setOpenweatherMapKey(e.target.value)}
                     />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('modelName')}</label>
-                    <input
-                      type="text"
-                      placeholder="gpt-4o-mini"
-                      className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
-                      value={openaiModel}
-                      onChange={(e) => setOpenaiModel(e.target.value)}
-                    />
+                    <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
+                      {tSettings('weatherHelp').split('openweathermap.org')[0]} <a href="https://openweathermap.org/api" target="_blank" className="text-primary underline">openweathermap.org</a>.
+                    </p>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
-            <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
-              <span className="material-symbols-outlined text-info">cloud</span>
-              {tSettings('weatherOpenWeatherMap')}
-            </h3>
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('apiToken')}</label>
-                <input
-                  type="password"
-                  placeholder={tSettings('openweathermapPlaceholder')}
-                  className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
-                  value={openweathermapKey}
-                  onChange={(e) => setOpenweatherMapKey(e.target.value)}
-                />
-                <p className="text-[10px] text-outline px-1 mt-1 leading-relaxed">
-                  {tSettings('weatherHelp').split('openweathermap.org')[0]} <a href="https://openweathermap.org/api" target="_blank" className="text-primary underline">openweathermap.org</a>.
-                </p>
               </div>
             </div>
-          </div>
+          )}
+
+          {activeTab === 'ai' && (
+            <div className="bg-surface-container-low rounded-2xl p-6 border border-outline-variant/10 editorial-shadow">
+              <h3 className="font-headline text-xl font-bold mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-secondary">auto_awesome</span>
+                {tSettings('aiAutomation')}
+              </h3>
+              <div className="space-y-6">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('aiProvider')}</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAiProvider('openrouter')}
+                      className={`p-3 rounded-xl font-bold text-sm transition-all border ${aiProvider === 'openrouter' ? 'bg-secondary text-white border-secondary shadow-md' : 'bg-surface-container-high text-on-surface-variant border-transparent'}`}
+                    >
+                      OpenRouter
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAiProvider('openai')}
+                      className={`p-3 rounded-xl font-bold text-sm transition-all border ${aiProvider === 'openai' ? 'bg-primary text-white border-primary shadow-md' : 'bg-surface-container-high text-on-surface-variant border-transparent'}`}
+                    >
+                      OpenAI
+                    </button>
+                  </div>
+                </div>
+
+                {aiProvider === 'openrouter' ? (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('openrouterKey')}</label>
+                      <input
+                        type="password"
+                        placeholder="sk-or-..."
+                        className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all text-on-surface font-medium"
+                        value={openrouterKey}
+                        onChange={(e) => setOpenrouterKey(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('modelId')}</label>
+                      <input
+                        type="text"
+                        placeholder="google/gemini-2.0-flash-lite-preview-02-05:free"
+                        className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-secondary/20 transition-all text-on-surface font-medium"
+                        value={openrouterModel}
+                        onChange={(e) => setOpenrouterModel(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 animate-in fade-in duration-300">
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('openaiKey')}</label>
+                      <input
+                        type="password"
+                        placeholder="sk-..."
+                        className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                        value={openaiKey}
+                        onChange={(e) => setOpenaiKey(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{tSettings('modelName')}</label>
+                      <input
+                        type="text"
+                        placeholder="gpt-4o-mini"
+                        className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                        value={openaiModel}
+                        onChange={(e) => setOpenaiModel(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"

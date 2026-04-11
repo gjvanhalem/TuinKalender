@@ -12,6 +12,7 @@ from trefle_api import search_plants, get_plant_details, extract_tasks_from_tref
 from ai_service import get_plant_suggestions_ai, get_garden_advice_ai
 from weather_service import get_weather_data, get_forecast_data
 from auth import get_current_user
+from auth_check import router as auth_check_router
 from fastapi.staticfiles import StaticFiles
 import shutil
 import os
@@ -19,6 +20,8 @@ import asyncio
 from datetime import datetime, timedelta
 
 app = FastAPI(title="Plan-te API")
+
+app.include_router(auth_check_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -128,22 +131,22 @@ def read_user_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 @app.put("/users/me", response_model=User)
-def update_user_me(user_data: User, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+def update_user_me(user_data: dict, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     # Re-fetch user in the current session to avoid "already attached" errors
     db_user = session.get(User, current_user.id)
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
         
-    db_user.name = user_data.name
-    db_user.trefle_token = user_data.trefle_token
-    db_user.openrouter_key = user_data.openrouter_key
-    db_user.openrouter_model = user_data.openrouter_model
-    db_user.openai_key = user_data.openai_key
-    db_user.openai_model = user_data.openai_model
-    db_user.openweathermap_key = user_data.openweathermap_key
-    db_user.ai_provider = user_data.ai_provider
-    db_user.preferred_language = user_data.preferred_language
-    db_user.has_onboarded = user_data.has_onboarded
+    if "name" in user_data: db_user.name = user_data["name"]
+    if "trefle_token" in user_data: db_user.trefle_token = user_data["trefle_token"]
+    if "openrouter_key" in user_data: db_user.openrouter_key = user_data["openrouter_key"]
+    if "openrouter_model" in user_data: db_user.openrouter_model = user_data["openrouter_model"]
+    if "openai_key" in user_data: db_user.openai_key = user_data["openai_key"]
+    if "openai_model" in user_data: db_user.openai_model = user_data["openai_model"]
+    if "openweathermap_key" in user_data: db_user.openweathermap_key = user_data["openweathermap_key"]
+    if "ai_provider" in user_data: db_user.ai_provider = user_data["ai_provider"]
+    if "preferred_language" in user_data: db_user.preferred_language = user_data["preferred_language"]
+    if "has_onboarded" in user_data: db_user.has_onboarded = user_data["has_onboarded"]
     
     session.add(db_user)
     session.commit()
@@ -205,6 +208,23 @@ def admin_update_user(user_id: int, data: dict, current_user: User = Depends(get
     session.add(db_user)
     session.commit()
     return {"message": "User updated"}
+
+@app.delete("/admin/users/{user_id}")
+def admin_delete_user(user_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only for administrators")
+        
+    db_user = session.get(User, user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    # Prevent deleting yourself
+    if db_user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own administrator account")
+        
+    session.delete(db_user)
+    session.commit()
+    return {"message": "User and all associated data deleted"}
 
 # Garden Endpoints
 @app.post("/gardens/", response_model=Garden)

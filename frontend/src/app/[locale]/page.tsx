@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Leaf, Plus, Search, Calendar, Map, ArrowRight, LogIn } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { useSession, signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import Logo from '@/components/Logo';
+import Modal from '@/components/Modal';
+
+declare global {
+  interface Window {
+    google: any;
+    initMap: () => void;
+  }
+}
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
 // Cache to prevent dashboard flashing
 let dashboardCache: { gardenCount: number; plantCount: number; userName?: string; gardens?: any[] } | null = null;
@@ -26,6 +35,13 @@ export default function Home() {
   });
   const [gardens, setGardens] = useState<any[]>(dashboardCache?.gardens || []);
   const [userName, setUserName] = useState(dashboardCache?.userName || "");
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newGardenName, setNewGardenName] = useState("");
+  const [newGardenLocation, setNewGardenLocation] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
+  const [showMapPicker, setShowMapPicker] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -33,6 +49,141 @@ export default function Home() {
       fetchUserData();
     }
   }, [session]);
+
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [map, setMap] = useState<any>(null);
+
+  useEffect(() => {
+    if (showAddModal && showMapPicker && GOOGLE_MAPS_API_KEY && !window.google) {
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => {
+        if (typeof window.initMap === 'function') {
+          window.initMap();
+        } else {
+          initMap();
+        }
+      };
+      document.head.appendChild(script);
+    } else if (showAddModal && showMapPicker && window.google) {
+      setTimeout(initMap, 100);
+    }
+  }, [showAddModal, showMapPicker]);
+
+  const initMap = () => {
+    if (!mapRef.current || !window.google) return;
+    
+    let center = { lat: 52.3676, lng: 4.9041 };
+    
+    const newMap = new window.google.maps.Map(mapRef.current, {
+      center: center,
+      zoom: 12,
+      disableDefaultUI: false,
+      clickableIcons: false,
+    });
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const userLoc = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        newMap.setCenter(userLoc);
+        newMap.setZoom(15);
+      });
+    }
+
+    newMap.addListener("click", (e: any) => {
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      handleMapClick(lat, lng);
+    });
+
+    setMap(newMap);
+  };
+
+  const handleMapClick = (lat: number, lng: number) => {
+    setNewGardenLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`);
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+        if (status === "OK" && results[0]) {
+          setNewGardenLocation(results[0].formatted_address);
+        }
+      });
+    }
+  };
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert(t("geolocationNotSupported"));
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setNewGardenLocation(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        
+        if (window.google && window.google.maps) {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: { lat: latitude, lng: longitude } }, (results: any, status: any) => {
+            if (status === "OK" && results[0]) {
+              setNewGardenLocation(results[0].formatted_address);
+            }
+            setIsLocating(false);
+          });
+        } else {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        console.error("Error getting location", error);
+        alert(t("couldNotGetLocation"));
+        setIsLocating(false);
+      }
+    );
+  };
+
+  const handleAddGarden = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch(`${API_URL}/gardens/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session?.accessToken}`,
+        },
+        body: JSON.stringify({ name: newGardenName, location: newGardenLocation }),
+      });
+      
+      if (response.ok) {
+        const savedGarden = await response.json();
+        
+        if (selectedFile) {
+          const formData = new FormData();
+          formData.append("file", selectedFile);
+          await fetch(`${API_URL}/gardens/${savedGarden.id}/image/`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session?.accessToken}` },
+            body: formData,
+          });
+        }
+
+        setNewGardenName("");
+        setNewGardenLocation("");
+        setSelectedFile(null);
+        setShowAddModal(false);
+        setShowMapPicker(false);
+        fetchStats();
+      }
+    } catch (error) {
+      console.error("Failed to add garden:", error);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -102,19 +253,47 @@ export default function Home() {
                 <span className="material-symbols-outlined">calendar_month</span>
                 <span>{t('viewCalendar')}</span>
               </Link>
-              <Link href="/gardens" className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center">
+              <Link 
+                href={gardens.length === 1 ? `/gardens/${gardens[0].id}` : "/gardens"} 
+                className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center"
+              >
                 <span className="material-symbols-outlined">potted_plant</span>
                 <span>{t('viewGardens')}</span>
               </Link>
             </div>
           ) : (
-            <button 
-              onClick={() => signIn('google')}
-              className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center"
-            >
-              <span className="material-symbols-outlined">login</span>
-              <span>{t('getStarted')}</span>
-            </button>
+            <div className="flex flex-col gap-4">
+              <button 
+                onClick={() => {
+                  if (rememberMe) {
+                    document.cookie = "remember-me=true; path=/; max-age=2592000"; // 30 days
+                  } else {
+                    document.cookie = "remember-me=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                  }
+                  signIn('google');
+                }}
+                className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center"
+              >
+                <span className="material-symbols-outlined">login</span>
+                <span>{t('getStarted')}</span>
+              </button>
+              <label className="flex items-center gap-2 cursor-pointer select-none group">
+                <div className="relative flex items-center justify-center">
+                  <input 
+                    type="checkbox" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="peer appearance-none w-5 h-5 border-2 border-outline rounded-md checked:bg-primary checked:border-primary transition-all cursor-pointer"
+                  />
+                  <span className="material-symbols-outlined absolute text-white text-sm opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity">
+                    check
+                  </span>
+                </div>
+                <span className="text-sm text-on-surface-variant font-medium group-hover:text-primary transition-colors">
+                  {t('rememberMe')}
+                </span>
+              </label>
+            </div>
           )}
         </div>
 
@@ -132,37 +311,58 @@ export default function Home() {
       {/* Feature Section / Grid */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
         <div className={`${session ? 'md:col-span-8' : 'md:col-span-12'} space-y-6`}>
-          {session && gardens.length > 0 && (
+          {session && (
             <div className="space-y-4 mb-8">
               <div className="flex items-center justify-between px-2">
                 <h3 className="font-headline text-2xl font-bold">{t('myGardens')}</h3>
+                <button 
+                  onClick={() => setShowAddModal(true)}
+                  className="flex items-center gap-2 text-primary hover:bg-primary/5 px-4 py-2 rounded-full transition-colors font-semibold"
+                >
+                  <span className="material-symbols-outlined">add_circle</span>
+                  <span>{t('addGarden')}</span>
+                </button>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {gardens.map((garden) => (
-                  <Link 
-                    key={garden.id} 
-                    href={`/gardens/${garden.id}`}
-                    className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex items-center gap-4 border border-outline-variant/5"
-                  >
-                    <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-primary text-2xl">
-                        {garden.is_owner ? 'yard' : 'share'}
+              
+              {gardens.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {gardens.map((garden) => (
+                    <Link 
+                      key={garden.id} 
+                      href={`/gardens/${garden.id}`}
+                      className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex items-center gap-4 border border-outline-variant/5"
+                    >
+                      <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-primary text-2xl">
+                          {garden.is_owner ? 'yard' : 'share'}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-headline text-lg font-bold text-on-surface truncate group-hover:text-primary transition-colors">
+                          {garden.name}
+                        </h4>
+                        <p className="text-on-surface-variant text-xs mt-0.5 truncate">
+                          {garden.plant_count} {t('plants').toLowerCase()}
+                        </p>
+                      </div>
+                      <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
+                        arrow_forward
                       </span>
-                    </div>
-                    <div className="min-w-0">
-                      <h4 className="font-headline text-lg font-bold text-on-surface truncate group-hover:text-primary transition-colors">
-                        {garden.name}
-                      </h4>
-                      <p className="text-on-surface-variant text-xs mt-0.5 truncate">
-                        {garden.plant_count} {t('plants').toLowerCase()}
-                      </p>
-                    </div>
-                    <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
-                      arrow_forward
-                    </span>
-                  </Link>
-                ))}
-              </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-surface-container-low rounded-2xl p-12 text-center border-2 border-dashed border-outline-variant/20">
+                  <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">yard</span>
+                  <p className="text-on-surface-variant font-medium mb-6">{t('noGardensYet')}</p>
+                  <button 
+                    onClick={() => setShowAddModal(true)}
+                    className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all active:scale-95"
+                  >
+                    {t('addFirstGarden')}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -251,6 +451,97 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title={t('addGarden')}>
+        <form onSubmit={handleAddGarden} className="space-y-6">
+          <div className="flex flex-col items-center mb-6">
+             <div className="w-32 h-32 rounded-2xl bg-surface-container-high border-2 border-dashed border-outline-variant/30 flex items-center justify-center overflow-hidden relative group cursor-pointer">
+                {selectedFile ? (
+                   <img src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" />
+                ) : (
+                   <span className="material-symbols-outlined text-4xl text-outline">image</span>
+                )}
+                
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                   <span className="material-symbols-outlined text-white">add_a_photo</span>
+                </div>
+
+                {/* Hidden File Input on top */}
+                <input 
+                   type="file" 
+                   accept="image/*" 
+                   className="absolute inset-0 opacity-0 cursor-pointer z-10" 
+                   onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                />
+             </div>
+             <p className="text-[10px] font-bold text-outline uppercase tracking-widest mt-2">{t('clickToChoosePhoto')}</p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('gardenName')}</label>
+              <input
+                type="text"
+                placeholder="Mijn Achtertuin"
+                className="w-full p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                value={newGardenName}
+                onChange={(e) => setNewGardenName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-outline uppercase tracking-widest px-1">{t('location')}</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Amsterdam"
+                  className="flex-grow p-4 bg-surface-container-high border-none rounded-xl focus:ring-2 focus:ring-primary/20 transition-all text-on-surface font-medium"
+                  value={newGardenLocation}
+                  onChange={(e) => setNewGardenLocation(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  disabled={isLocating}
+                  className="bg-surface-container-highest p-4 rounded-xl text-primary hover:bg-primary-container/20 transition-colors"
+                >
+                  <span className={`material-symbols-outlined ${isLocating ? 'animate-pulse' : ''}`}>my_location</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMapPicker(!showMapPicker)}
+                  className={`p-4 rounded-xl transition-colors ${showMapPicker ? 'bg-primary text-white' : 'bg-surface-container-highest hover:bg-primary-container/20'}`}
+                >
+                  <span className="material-symbols-outlined">map</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {showMapPicker && (
+            <div className="w-full h-64 rounded-xl overflow-hidden border border-outline-variant/20 animate-in fade-in zoom-in duration-300">
+              <div ref={mapRef} className="w-full h-full" />
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="flex-1 px-6 py-4 rounded-xl font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors"
+            >
+              {t('cancel')}
+            </button>
+            <button
+              type="submit"
+              className="flex-1 bg-primary text-white px-6 py-4 rounded-xl font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all"
+            >
+              {t('add')}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </main>
   );
 }

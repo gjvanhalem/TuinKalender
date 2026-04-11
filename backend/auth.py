@@ -34,14 +34,16 @@ async def get_current_user(
         if not email:
             raise HTTPException(status_code=401, detail="Authentication failed: No email found")
 
+        email_lower = email.lower()
+
         # Check if any users exist in the system
         user_count = session.exec(select(func.count(User.id))).one()
         
-        user = session.exec(select(User).where(User.email == email)).first()
+        user = session.exec(select(User).where(func.lower(User.email) == email_lower)).first()
         
         if user_count == 0:
             # First user becomes admin automatically
-            user = User(email=email, google_id=google_id, is_admin=True, is_active=True)
+            user = User(email=email_lower, google_id=google_id, is_admin=True, is_active=True)
             session.add(user)
             session.commit()
             session.refresh(user)

@@ -97,6 +97,35 @@ export default function AdminPage() {
     }
   };
 
+  const deleteUser = async (user: any) => {
+    if (user.id === (session as any)?.user?.id || user.email === session?.user?.email) {
+      alert(tAdmin("deleteSelfError"));
+      return;
+    }
+
+    if (!confirm(tAdmin("deleteConfirm", { email: user.email }))) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/admin/users/${user.id}`, {
+        method: 'DELETE',
+        headers: { 
+          Authorization: `Bearer ${session?.accessToken}` 
+        }
+      });
+      if (response.ok) {
+        setMessage({ type: 'success', text: tAdmin("deleteSuccess") });
+        fetchUsers();
+      } else {
+        const data = await response.json();
+        setMessage({ type: 'error', text: data.detail || tAdmin("deleteError") });
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: t('serverUnreachable') });
+    }
+  };
+
   const inviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteEmail) return;
@@ -188,7 +217,16 @@ export default function AdminPage() {
                         </button>
                       </td>
                       <td className="p-4 text-right">
-                        <div className="text-[10px] font-bold text-outline">ID #{user.id}</div>
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => deleteUser(user)} 
+                            className="p-1.5 rounded-lg text-outline hover:bg-error/10 hover:text-error transition-all"
+                            title={tAdmin("deleteUser")}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                          <div className="text-[10px] font-bold text-outline">ID #{user.id}</div>
+                        </div>
                       </td>
                     </tr>
                   ))}
