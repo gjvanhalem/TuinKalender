@@ -68,6 +68,7 @@ export default function GardenPlantsPage() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Plant, direction: 'asc' | 'desc' } | null>({ key: 'common_name', direction: 'asc' });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('share') === 'true') {
@@ -100,6 +101,29 @@ export default function GardenPlantsPage() {
     } catch (error) {
       console.error("Error fetching AI advice:", error);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      const response = await fetch(`${API_URL}/gardens/${gardenId}/refresh`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setWeather({ forecast: data.weather });
+        setAiAdvice(data.advice);
+        // Also show advice if it was hidden
+        setIsAdviceExpanded(true);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.detail || "Failed to refresh weather and advice");
+      }
+    } catch (error) {
+      console.error("Error refreshing weather:", error);
+    }
+    setIsRefreshing(false);
   };
 
   const fetchWeather = async () => {
@@ -381,17 +405,6 @@ export default function GardenPlantsPage() {
                     {garden.location}
                   </p>
                 )}
-                {weather?.current && (
-                  <div className="flex items-center gap-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/10">
-                    <img 
-                      src={`https://openweathermap.org/img/wn/${weather.current.weather[0].icon}.png`} 
-                      alt={weather.current.weather[0].description} 
-                      className="w-6 h-6"
-                    />
-                    <span className="text-sm font-bold text-primary">{Math.round(weather.current.main.temp)}°C</span>
-                    <span className="text-[10px] font-bold text-primary/60 uppercase tracking-wider hidden sm:inline">{weather.current.weather[0].description}</span>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -420,57 +433,64 @@ export default function GardenPlantsPage() {
         </div>
 
         {/* Compact Dashboard Section */}
-        {(weather || aiAdvice) && (
-          <div className="mb-8 bg-surface-container-low rounded-3xl border border-outline-variant/10 editorial-shadow overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+        {(weather?.forecast || aiAdvice) && (
+          <div className="mb-6 bg-surface-container-low rounded-2xl border border-outline-variant/10 editorial-shadow overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
             <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-outline-variant/10">
-              {/* Weather Details (Always visible) */}
-              {weather?.current && (
-                <div className="flex-grow p-4 md:p-6 flex items-center justify-around md:justify-start md:gap-12 bg-surface-container-low/50">
-                  <div className="flex flex-col items-center md:items-start">
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">{t('humidity') || "Vochtigheid"}</p>
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm text-primary/60">humidity_percentage</span>
-                      <p className="text-sm font-bold text-on-surface">{weather.current.main.humidity}%</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center md:items-start">
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">{t('wind') || "Wind"}</p>
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm text-primary/60">air</span>
-                      <p className="text-sm font-bold text-on-surface">{Math.round(weather.current.wind.speed * 3.6)} km/u</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-center md:items-start">
-                    <p className="text-[10px] font-bold text-outline uppercase tracking-wider mb-1">{t('feelsLike') || "Gevoel"}</p>
-                    <div className="flex items-center gap-1">
-                      <span className="material-symbols-outlined text-sm text-primary/60">thermostat</span>
-                      <p className="text-sm font-bold text-on-surface">{Math.round(weather.current.main.feels_like)}°C</p>
-                    </div>
+              {/* Weather Forecast (5 days) - More Compact */}
+              {weather?.forecast?.list && (
+                <div className="flex-grow p-3 md:p-4 overflow-x-auto scrollbar-none">
+                  <div className="flex items-center gap-6 md:gap-10 min-w-max px-2">
+                    {weather.forecast.list
+                      .filter((_: any, index: number) => index % 8 === 0)
+                      .slice(0, 5)
+                      .map((day: any, idx: number) => (
+                        <div key={idx} className="flex flex-row md:flex-col items-center gap-2 md:gap-0">
+                          <p className="text-[10px] font-bold text-outline uppercase tracking-wider md:mb-1 w-8 md:w-auto">
+                            {new Date(day.dt * 1000).toLocaleDateString(locale, { weekday: 'short' })}
+                          </p>
+                          <img 
+                            src={`https://openweathermap.org/img/wn/${day.weather[0].icon}.png`} 
+                            alt={day.weather[0].description} 
+                            className="w-8 h-8"
+                          />
+                          <p className="text-xs font-bold text-on-surface">{Math.round(day.main.temp)}°</p>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}
 
-              {/* AI Advice Toggle */}
-              {aiAdvice && (
-                <button 
-                  onClick={() => setIsAdviceExpanded(!isAdviceExpanded)}
-                  className={`p-4 md:p-6 flex items-center justify-between md:justify-center gap-4 transition-all hover:bg-surface-container-high shrink-0 ${isAdviceExpanded ? 'bg-secondary/5 text-secondary' : 'text-on-surface-variant'}`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-secondary">auto_awesome</span>
-                    <span className="text-sm font-bold uppercase tracking-widest">{t('smartAdvice') || "Slim Advies"}</span>
-                  </div>
-                  <span className={`material-symbols-outlined transition-transform duration-300 ${isAdviceExpanded ? 'rotate-180' : ''}`}>
-                    expand_more
-                  </span>
-                </button>
+              {/* AI Advice Toggle - Slimmer */}
+              {(aiAdvice || isRefreshing) && (
+                <div className="flex divide-x divide-outline-variant/10 shrink-0">
+                  <button 
+                    onClick={() => setIsAdviceExpanded(!isAdviceExpanded)}
+                    className={`px-4 py-3 md:px-6 flex items-center gap-3 transition-all hover:bg-surface-container-high ${isAdviceExpanded ? 'bg-secondary/5 text-secondary' : 'text-on-surface-variant'}`}
+                  >
+                    <span className="material-symbols-outlined text-secondary text-xl">auto_awesome</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">{t('smartAdvice') || "Slim Advies"}</span>
+                    <span className={`material-symbols-outlined text-sm transition-transform duration-300 ${isAdviceExpanded ? 'rotate-180' : ''}`}>
+                      expand_more
+                    </span>
+                  </button>
+                  <button 
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    className="px-4 py-3 flex items-center justify-center text-outline hover:text-primary transition-all active:scale-95 disabled:opacity-50"
+                    title={t('refresh')}
+                  >
+                    <span className={`material-symbols-outlined text-xl ${isRefreshing ? 'animate-spin' : ''}`}>
+                      refresh
+                    </span>
+                  </button>
+                </div>
               )}
             </div>
 
-            {/* Expanded AI Advice Content */}
+            {/* Expanded AI Advice Content - More Compact */}
             {aiAdvice && isAdviceExpanded && (
-              <div className="px-6 pb-6 pt-2 animate-in slide-in-from-top-2 duration-300 bg-secondary/5 border-t border-secondary/10">
-                <p className="text-sm text-on-surface leading-relaxed italic border-l-2 border-secondary/30 pl-4 py-2">
+              <div className="px-5 pb-4 pt-1 animate-in slide-in-from-top-2 duration-300 bg-secondary/5 border-t border-secondary/10">
+                <p className="text-sm text-on-surface leading-relaxed italic border-l-2 border-secondary/30 pl-4 py-1">
                   {aiAdvice}
                 </p>
               </div>

@@ -15,6 +15,8 @@ from auth import get_current_user
 from fastapi.staticfiles import StaticFiles
 import shutil
 import os
+import asyncio
+from datetime import datetime, timedelta
 
 app = FastAPI(title="Plan-te API")
 
@@ -31,6 +33,88 @@ def on_startup():
     # Schema updates are now handled by Alembic migrations.
     # We just ensure the images directory exists.
     os.makedirs("images", exist_ok=True)
+    # Start the background task
+    asyncio.create_task(update_weather_loop())
+
+async def update_weather_loop():
+    """
+    Background task to update weather and advice for all gardens once per day.
+    """
+    while True:
+        try:
+            print("Background Task: Starting daily weather/advice update check...")
+            with Session(engine) as session:
+                update_all_gardens_weather_and_advice(session)
+        except Exception as e:
+            print(f"Background Task Error: {e}")
+        # Check every hour
+        await asyncio.sleep(3600)
+
+def update_all_gardens_weather_and_advice(session: Session):
+    now = datetime.now()
+    gardens = session.exec(select(Garden)).all()
+    
+    for garden in gardens:
+        # Check if we already updated today (or ever)
+        if garden.last_weather_update and garden.last_weather_update.date() == now.date():
+            continue
+            
+        update_garden_weather_and_advice(session, garden)
+
+def update_garden_weather_and_advice(session: Session, garden: Garden):
+    """
+    Helper to update weather and advice for a single garden.
+    Returns (bool, str) - (success, error_message)
+    """
+    now = datetime.now()
+    # Get owner user for API keys
+    user = session.get(User, garden.user_id)
+    if not user:
+        return False, "Owner user not found"
+    
+    if not user.openweathermap_key:
+        return False, "OpenWeatherMap API key is missing. Set it in Settings."
+        
+    if not garden.location:
+        return False, "Garden location is missing. Set it in Garden Settings."
+        
+    try:
+        # 1. Fetch Forecast
+        forecast = get_forecast_data(garden.location, user.openweathermap_key)
+        if not forecast:
+            return False, f"Could not fetch weather for '{garden.location}'. Check the location name."
+        
+        # 2. Get AI Advice based on this forecast
+        plants = session.exec(select(Plant).where(Plant.garden_id == garden.id)).all()
+        plant_names = [p.common_name or p.scientific_name for p in plants]
+        plants_summary = ", ".join(filter(None, plant_names[:10]))
+        
+        provider = user.ai_provider or "openrouter"
+        if provider == "openai":
+            api_key = user.openai_key
+            model = user.openai_model or "gpt-4o-mini"
+        else:
+            api_key = user.openrouter_key
+            model = user.openrouter_model or "openrouter/auto"
+        
+        advice = None
+        if api_key and plants_summary:
+            weather_context = {"forecast": forecast}
+            advice = get_garden_advice_ai(plants_summary, weather_context, api_key, model, provider, user.preferred_language)
+            
+        # 3. Update Garden
+        garden.weather_forecast = forecast
+        if advice:
+            garden.smart_advice = advice
+        garden.last_weather_update = now
+        session.add(garden)
+        session.commit()
+        session.refresh(garden)
+        print(f"Update: Successfully updated garden {garden.id}")
+        return True, ""
+    except Exception as e:
+        print(f"Update: Error updating garden {garden.id}: {e}")
+        return False, str(e)
 
 @app.get("/")
 def read_root():
@@ -289,18 +373,15 @@ def get_garden_weather(garden_id: int, current_user: User = Depends(get_current_
     if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=404, detail="Garden not found or no access")
     
-    if not current_user.openweathermap_key:
-        raise HTTPException(status_code=400, detail="No OpenWeatherMap API key configured")
-    
-    if not garden.location:
-        raise HTTPException(status_code=400, detail="No location set for this garden")
-        
-    weather = get_weather_data(garden.location, current_user.openweathermap_key)
-    forecast = get_forecast_data(garden.location, current_user.openweathermap_key)
+    # If no stored weather, or it's from a previous day, and we have a key, try to update it once
+    now = datetime.now()
+    if (not garden.weather_forecast or not garden.last_weather_update or garden.last_weather_update.date() < now.date()):
+        # Try to update it using the helper
+        update_garden_weather_and_advice(session, garden)
     
     return {
-        "current": weather,
-        "forecast": forecast
+        "current": None, # User asked to remove current weather in favor of weekly forecast
+        "forecast": garden.weather_forecast
     }
 
 @app.get("/gardens/{garden_id}/advice")
@@ -312,33 +393,54 @@ def get_garden_advice(garden_id: int, locale: str = "en", current_user: User = D
     if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=404, detail="Garden not found or no access")
     
-    # Get weather
-    if not current_user.openweathermap_key or not garden.location:
-        raise HTTPException(status_code=400, detail="Weather key or location missing")
+    # If we have stored advice from today, return it
+    now = datetime.now()
+    if garden.smart_advice and garden.last_weather_update and garden.last_weather_update.date() == now.date():
+        return {"advice": garden.smart_advice}
         
-    weather = get_weather_data(garden.location, current_user.openweathermap_key)
-    forecast = get_forecast_data(garden.location, current_user.openweathermap_key)
-    weather_context = {"current": weather, "forecast": forecast}
+    # Otherwise, check if we have weather to generate advice
+    if garden.weather_forecast and garden.last_weather_update and garden.last_weather_update.date() == now.date():
+        # Generate advice
+        plants = session.exec(select(Plant).where(Plant.garden_id == garden.id)).all()
+        plant_names = [p.common_name or p.scientific_name for p in plants]
+        plants_summary = ", ".join(filter(None, plant_names[:10]))
+        
+        provider = current_user.ai_provider or "openrouter"
+        if provider == "openai":
+            api_key = current_user.openai_key
+            model = current_user.openai_model or "gpt-4o-mini"
+        else:
+            api_key = current_user.openrouter_key
+            model = current_user.openrouter_model or "openrouter/auto"
+            
+        if api_key and plants_summary:
+            weather_context = {"forecast": garden.weather_forecast}
+            advice = get_garden_advice_ai(plants_summary, weather_context, api_key, model, provider, locale)
+            garden.smart_advice = advice
+            session.add(garden)
+            session.commit()
+            return {"advice": advice}
+            
+    # Fallback to current advice if still exists, or empty
+    return {"advice": garden.smart_advice or "No advice available yet. It will be updated soon."}
+
+@app.post("/gardens/{garden_id}/refresh")
+def refresh_garden_weather(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    garden = session.get(Garden, garden_id)
+    # Check access (owner or shared)
+    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == current_user.id)).first()
     
-    # Get plants summary
-    plants = session.exec(select(Plant).where(Plant.garden_id == garden.id)).all()
-    plant_names = [p.common_name or p.scientific_name for p in plants]
-    plants_summary = ", ".join(plant_names[:10]) # Limit to first 10 for prompt efficiency
-    
-    # Get AI settings
-    provider = current_user.ai_provider or "openrouter"
-    if provider == "openai":
-        api_key = current_user.openai_key
-        model = current_user.openai_model or "gpt-4o-mini"
-    else:
-        api_key = current_user.openrouter_key
-        model = current_user.openrouter_model or "openrouter/auto"
+    if not garden or (garden.user_id != current_user.id and not has_shared_access):
+        raise HTTPException(status_code=404, detail="Garden not found or no access")
         
-    if not api_key:
-        raise HTTPException(status_code=400, detail="AI API key missing")
+    success, error_msg = update_garden_weather_and_advice(session, garden)
+    if not success:
+        raise HTTPException(status_code=400, detail=error_msg)
         
-    advice = get_garden_advice_ai(plants_summary, weather_context, api_key, model, provider, locale)
-    return {"advice": advice}
+    return {
+        "weather": garden.weather_forecast,
+        "advice": garden.smart_advice
+    }
 
 # Plant Endpoints
 @app.post("/plants/", response_model=Plant)

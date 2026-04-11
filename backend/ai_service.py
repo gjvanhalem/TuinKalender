@@ -108,19 +108,17 @@ def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, 
         return error_msgs.get(locale, "AI key not configured.")
 
     # Safely extract weather data
-    current_weather = weather_data.get("current") or {}
-    weather_list = current_weather.get("weather", [{}])
-    weather_desc = weather_list[0].get("description", "unknown") if weather_list else "unknown"
-    temp = current_weather.get("main", {}).get("temp", "unknown")
+    from weather_service import summarize_forecast
+    forecast_summary = summarize_forecast(weather_data.get("forecast"))
     
     prompt = f"""
     You are an expert gardening assistant. Provide short and powerful advice (max 4 sentences) in {target_lang} for a garden with the following plants:
     {plants_summary}
 
-    Current weather: {weather_desc}, temperature: {temp}°C.
+    Weather forecast for the coming week: {forecast_summary}.
 
     Focus on:
-    1. Direct action based on the weather (e.g. watering in heat, protecting from frost).
+    1. Direct action based on the upcoming weather (e.g. watering in heat, protecting from frost).
     2. Specific tips for these plants in these conditions.
     3. Be personal and helpful.
     """

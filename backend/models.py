@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from typing import Optional, List, Any
 from sqlmodel import Field, SQLModel, Relationship, JSON
 
@@ -33,6 +34,10 @@ class Garden(SQLModel, table=True):
     name: str
     location: Optional[str] = None
     image_path: Optional[str] = None
+    
+    weather_forecast: Optional[dict] = Field(default=None, sa_type=JSON)
+    smart_advice: Optional[str] = None
+    last_weather_update: Optional[datetime] = None
     
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="gardens")
