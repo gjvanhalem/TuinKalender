@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Link } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import PlantModal from "@/components/PlantModal";
 import PlantInfoModal from "@/components/PlantInfoModal";
 import { useTranslations, useLocale } from "next-intl";
