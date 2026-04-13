@@ -171,11 +171,13 @@ def download_image(url: str, plant_id: int) -> Optional[str]:
         if response.status_code == 200:
             os.makedirs("images", exist_ok=True)
             # Use only the filename part to prevent path traversal
-            safe_basename = os.path.basename(urlparse(url).path).split('?')[0]
+            parsed_path = urlparse(url).path
+            safe_basename = os.path.basename(parsed_path).split('?')[0]
             if not safe_basename:
                 safe_basename = f"plant_{plant_id}.jpg"
             
-            file_name = f"images/trefle_{plant_id}_{safe_basename}"
+            # Use os.path.join for safer path construction
+            file_name = os.path.join("images", f"trefle_{plant_id}_{safe_basename}")
             with open(file_name, 'wb') as f:
                 for chunk in response.iter_content(1024):
                     f.write(chunk)

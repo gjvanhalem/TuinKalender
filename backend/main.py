@@ -262,7 +262,9 @@ async def upload_garden_image(garden_id: int, file: UploadFile = File(...), curr
         raise HTTPException(status_code=403, detail="Not authorized")
         
     os.makedirs("images", exist_ok=True)
-    file_path = f"images/garden_{garden_id}_{file.filename}"
+    # Sanitize filename to prevent path traversal
+    safe_filename = os.path.basename(file.filename)
+    file_path = f"images/garden_{garden_id}_{safe_filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
@@ -854,7 +856,9 @@ async def upload_plant_image(plant_id: int, file: UploadFile = File(...), curren
         raise HTTPException(status_code=403, detail="Not authorized")
         
     os.makedirs("images", exist_ok=True)
-    file_path = f"images/{plant_id}_{file.filename}"
+    # Sanitize filename to prevent path traversal
+    safe_filename = os.path.basename(file.filename)
+    file_path = f"images/{plant_id}_{safe_filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         

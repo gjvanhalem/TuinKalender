@@ -37,8 +37,19 @@ export default function GardensPage() {
   const [newGardenName, setNewGardenName] = useState("");
   const [newGardenLocation, setNewGardenLocation] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [showMapPicker, setShowMapPicker] = useState(false);
+
+  useEffect(() => {
+    if (selectedFile) {
+      const objectUrl = URL.createObjectURL(selectedFile);
+      setPreviewUrl(objectUrl);
+      return () => URL.revokeObjectURL(objectUrl);
+    }
+    setPreviewUrl(null);
+  }, [selectedFile]);
+
   const [showModal, setShowModal] = useState(false);
   const [editingGarden, setEditingGarden] = useState<Garden | null>(null);
   const [isLoading, setIsLoading] = useState(!gardensCache);
@@ -488,8 +499,8 @@ export default function GardensPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="flex flex-col items-center mb-6">
                  <div className="w-32 h-32 rounded-2xl bg-surface-container-high border-2 border-dashed border-outline-variant/30 flex items-center justify-center overflow-hidden relative group cursor-pointer">
-                    {selectedFile ? (
-                       <img src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" />
+                    {previewUrl ? (
+                       <img src={previewUrl} className="w-full h-full object-cover" />
                     ) : editingGarden?.image_path ? (
                        <img src={`${API_URL}/${editingGarden.image_path}`} className="w-full h-full object-cover" />
                     ) : (
