@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { Link, useRouter } from "@/i18n/routing";
 import PlantModal from "@/components/PlantModal";
 import PlantInfoModal from "@/components/PlantInfoModal";
+import GardenPhotoModal from "@/components/GardenPhotoModal";
 import { useTranslations, useLocale } from "next-intl";
 
 interface Plant {
@@ -69,6 +70,7 @@ export default function GardenPlantsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortConfig, setSortConfig] = useState<{ key: keyof Plant, direction: 'asc' | 'desc' } | null>({ key: 'common_name', direction: 'asc' });
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isGardenPhotoModalOpen, setIsGardenPhotoModalOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get('share') === 'true') {
@@ -409,8 +411,17 @@ export default function GardenPlantsPage() {
             </div>
           </div>
           <div className="flex gap-3">
+            {(userSettings?.openrouter_key || userSettings?.openai_key) && (
+              <button
+                onClick={() => setIsGardenPhotoModalOpen(true)}
+                className="flex items-center justify-center w-14 h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-primary transition-all active:scale-95 shadow-sm"
+                title={t('photo.analyzeGarden')}
+              >
+                <span className="material-symbols-outlined">photo_camera</span>
+              </button>
+            )}
             {garden?.is_owner && (
-              <button 
+              <button
                 onClick={() => setShowShareModal(true)}
                 className="flex items-center justify-center w-14 h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-secondary transition-all active:scale-95 shadow-sm"
                 title={t('shareGarden')}
@@ -418,7 +429,7 @@ export default function GardenPlantsPage() {
                 <span className="material-symbols-outlined">share</span>
               </button>
             )}
-            <button 
+            <button
               onClick={() => {
                 setActivePlant({ common_name: "", scientific_name: "" });
                 setIsEditing(false);
@@ -657,8 +668,20 @@ export default function GardenPlantsPage() {
         onViewRawData={setAdminPlantData}
         onMove={setMovingPlant}
         API_URL={API_URL}
+        accessToken={session?.accessToken as string}
         showAdminOptions={userSettings?.is_admin}
       />
+
+      {garden && (
+        <GardenPhotoModal
+          isOpen={isGardenPhotoModalOpen}
+          onClose={() => setIsGardenPhotoModalOpen(false)}
+          gardenId={garden.id}
+          gardenName={garden.name}
+          API_URL={API_URL}
+          accessToken={session?.accessToken as string}
+        />
+      )}
 
       {/* Admin Data Modal */}
       {adminPlantData && (

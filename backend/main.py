@@ -2,20 +2,21 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from typing import List, Optional
-from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
+from fastapi import FastAPI, Depends, HTTPException, File, Form, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel, Session, select
 from database import engine, create_db_and_tables, get_session
 from sqlalchemy import func
-from models import Garden, Plant, Task, User, GardenAccess
+from models import Garden, Plant, Task, User, GardenAccess, PlantPhoto, GardenPhoto
 from trefle_api import search_plants, get_plant_details, extract_tasks_from_trefle_data, download_image
-from ai_service import get_plant_suggestions_ai, get_garden_advice_ai
+from ai_service import get_plant_suggestions_ai, get_garden_advice_ai, identify_plant_from_image, analyze_plant_health, analyze_garden_photo
 from weather_service import get_weather_data, get_forecast_data
 from auth import get_current_user
 from auth_check import router as auth_check_router
 from fastapi.staticfiles import StaticFiles
 import shutil
 import os
+import json
 import asyncio
 from datetime import datetime, timedelta
 
@@ -662,6 +663,268 @@ def get_ai_suggestions(common_name: str, scientific_name: str, locale: str = "en
         
     return get_plant_suggestions_ai(common_name, scientific_name, api_key, model, provider, locale)
 
+# ── Plant Photo / Vision Endpoints ────────────────────────────────────────────
+
+def _get_ai_config(user: User):
+    """Return (api_key, model, provider) for the user's AI setup."""
+    provider = user.ai_provider or "openrouter"
+    if provider == "openai":
+        if not user.openai_key:
+            raise HTTPException(status_code=400, detail="OpenAI API key not configured in settings")
+        return user.openai_key, user.openai_model or "gpt-4o", provider
+    else:
+        if not user.openrouter_key:
+            raise HTTPException(status_code=400, detail="OpenRouter API key not configured in settings")
+        return user.openrouter_key, user.openrouter_model or "openrouter/auto", provider
+
+
+@app.post("/plants/identify/")
+async def identify_plant_photo(
+    file: UploadFile = File(...),
+    locale: str = "en",
+    current_user: User = Depends(get_current_user),
+):
+    """Upload a photo and get AI plant identification to pre-fill the plant form."""
+    api_key, model, provider = _get_ai_config(current_user)
+    image_bytes = await file.read()
+    result = identify_plant_from_image(image_bytes, api_key, model, provider, locale)
+    if not result:
+        raise HTTPException(status_code=502, detail="AI could not identify the plant. Try a clearer photo.")
+    return result
+
+
+@app.post("/plants/{plant_id}/photos/")
+async def upload_plant_photo(
+    plant_id: int,
+    file: UploadFile = File(...),
+    notes: Optional[str] = Form(None),
+    locale: str = "en",
+    analyze: bool = True,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Upload a timestamped photo for a plant. Optionally triggers AI health analysis."""
+    plant = session.get(Plant, plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+    # Check garden access
+    garden = session.get(Garden, plant.garden_id)
+    accessible = get_accessible_garden_ids(current_user.id, session)
+    if plant.garden_id not in accessible:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    os.makedirs("images", exist_ok=True)
+    safe_filename = os.path.basename(file.filename or "photo.jpg")
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    file_path = f"images/plant_photo_{plant_id}_{timestamp}_{safe_filename}"
+
+    image_bytes = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(image_bytes)
+
+    # Optionally run AI health analysis
+    ai_analysis = None
+    if analyze:
+        try:
+            api_key, model, provider = _get_ai_config(current_user)
+            plant_name = plant.common_name or plant.scientific_name or "Unknown plant"
+            result = analyze_plant_health(image_bytes, plant_name, api_key, model, provider, locale)
+            if result:
+                ai_analysis = json.dumps(result)
+        except HTTPException:
+            pass  # No AI key configured — still save the photo
+        except Exception as e:
+            print(f"Health analysis error: {e}")
+
+    photo = PlantPhoto(
+        plant_id=plant_id,
+        file_path=file_path,
+        notes=notes,
+        ai_analysis=ai_analysis,
+    )
+    session.add(photo)
+    session.commit()
+    session.refresh(photo)
+
+    photo_dict = photo.model_dump()
+    if ai_analysis:
+        try:
+            photo_dict["ai_analysis"] = json.loads(ai_analysis)
+        except Exception:
+            pass
+    return photo_dict
+
+
+@app.get("/plants/{plant_id}/photos/")
+def get_plant_photos(
+    plant_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Return all photos for a plant, newest first."""
+    plant = session.get(Plant, plant_id)
+    if not plant:
+        raise HTTPException(status_code=404, detail="Plant not found")
+
+    accessible = get_accessible_garden_ids(current_user.id, session)
+    if plant.garden_id not in accessible:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    photos = session.exec(
+        select(PlantPhoto).where(PlantPhoto.plant_id == plant_id).order_by(PlantPhoto.taken_at.desc())
+    ).all()
+
+    result = []
+    for p in photos:
+        d = p.model_dump()
+        if p.ai_analysis:
+            try:
+                d["ai_analysis"] = json.loads(p.ai_analysis)
+            except Exception:
+                pass
+        result.append(d)
+    return result
+
+
+@app.delete("/plants/{plant_id}/photos/{photo_id}")
+def delete_plant_photo(
+    plant_id: int,
+    photo_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    photo = session.get(PlantPhoto, photo_id)
+    if not photo or photo.plant_id != plant_id:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    plant = session.get(Plant, plant_id)
+    accessible = get_accessible_garden_ids(current_user.id, session)
+    if plant.garden_id not in accessible:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Remove file from disk
+    if photo.file_path and os.path.exists(photo.file_path):
+        os.remove(photo.file_path)
+
+    session.delete(photo)
+    session.commit()
+    return {"message": "Photo deleted"}
+
+
+@app.post("/gardens/{garden_id}/photos/")
+async def upload_garden_photo(
+    garden_id: int,
+    file: UploadFile = File(...),
+    notes: Optional[str] = Form(None),
+    locale: str = "en",
+    analyze: bool = True,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Upload a timestamped garden photo and optionally run AI analysis."""
+    garden = session.get(Garden, garden_id)
+    if not garden:
+        raise HTTPException(status_code=404, detail="Garden not found")
+
+    accessible = get_accessible_garden_ids(current_user.id, session)
+    if garden_id not in accessible:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    os.makedirs("images", exist_ok=True)
+    safe_filename = os.path.basename(file.filename or "photo.jpg")
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    file_path = f"images/garden_photo_{garden_id}_{timestamp}_{safe_filename}"
+
+    image_bytes = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(image_bytes)
+
+    ai_analysis = None
+    if analyze:
+        try:
+            api_key, model, provider = _get_ai_config(current_user)
+            result = analyze_garden_photo(image_bytes, api_key, model, provider, locale)
+            if result:
+                ai_analysis = json.dumps(result)
+        except HTTPException:
+            pass
+        except Exception as e:
+            print(f"Garden photo analysis error: {e}")
+
+    photo = GardenPhoto(
+        garden_id=garden_id,
+        file_path=file_path,
+        notes=notes,
+        ai_analysis=ai_analysis,
+    )
+    session.add(photo)
+    session.commit()
+    session.refresh(photo)
+
+    photo_dict = photo.model_dump()
+    if ai_analysis:
+        try:
+            photo_dict["ai_analysis"] = json.loads(ai_analysis)
+        except Exception:
+            pass
+    return photo_dict
+
+
+@app.get("/gardens/{garden_id}/photos/")
+def get_garden_photos(
+    garden_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """Return all photos for a garden, newest first."""
+    garden = session.get(Garden, garden_id)
+    if not garden:
+        raise HTTPException(status_code=404, detail="Garden not found")
+
+    accessible = get_accessible_garden_ids(current_user.id, session)
+    if garden_id not in accessible:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    photos = session.exec(
+        select(GardenPhoto).where(GardenPhoto.garden_id == garden_id).order_by(GardenPhoto.taken_at.desc())
+    ).all()
+
+    result = []
+    for p in photos:
+        d = p.model_dump()
+        if p.ai_analysis:
+            try:
+                d["ai_analysis"] = json.loads(p.ai_analysis)
+            except Exception:
+                pass
+        result.append(d)
+    return result
+
+
+@app.delete("/gardens/{garden_id}/photos/{photo_id}")
+def delete_garden_photo(
+    garden_id: int,
+    photo_id: int,
+    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    photo = session.get(GardenPhoto, photo_id)
+    if not photo or photo.garden_id != garden_id:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    garden = session.get(Garden, garden_id)
+    if not garden or garden.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if photo.file_path and os.path.exists(photo.file_path):
+        os.remove(photo.file_path)
+
+    session.delete(photo)
+    session.commit()
+    return {"message": "Photo deleted"}
+
+
 def sync_plant_tasks(plant: Plant, session: Session):
     """
     Ensure Task records match the flowering_months and pruning_months strings.
@@ -857,7 +1120,9 @@ async def upload_plant_image(plant_id: int, file: UploadFile = File(...), curren
         
     os.makedirs("images", exist_ok=True)
     # Sanitize filename to prevent path traversal
-    safe_filename = os.path.basename(file.filename)
+    safe_filename = os.path.basename(file.filename or "photo.jpg")
+    if not safe_filename:
+        safe_filename = "photo.jpg"
     file_path = f"images/{plant_id}_{safe_filename}"
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)

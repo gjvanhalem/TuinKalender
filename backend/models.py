@@ -34,16 +34,27 @@ class Garden(SQLModel, table=True):
     name: str
     location: Optional[str] = None
     image_path: Optional[str] = None
-    
+
     weather_forecast: Optional[dict] = Field(default=None, sa_type=JSON)
     smart_advice: Optional[str] = None
     last_weather_update: Optional[datetime] = None
-    
+
     user_id: int = Field(foreign_key="user.id")
     user: User = Relationship(back_populates="gardens")
     plants: List["Plant"] = Relationship(back_populates="garden", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
-    
+    photos: List["GardenPhoto"] = Relationship(back_populates="garden", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
     shared_users: List[User] = Relationship(back_populates="shared_gardens", link_model=GardenAccess)
+
+class GardenPhoto(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    garden_id: int = Field(foreign_key="garden.id")
+    file_path: str
+    taken_at: datetime = Field(default_factory=datetime.utcnow)
+    ai_analysis: Optional[str] = None  # JSON string with garden analysis
+    notes: Optional[str] = None
+
+    garden: Optional[Garden] = Relationship(back_populates="photos")
 
 class Plant(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -57,10 +68,21 @@ class Plant(SQLModel, table=True):
     flowering_months: Optional[str] = None # e.g. "4,5,6"
     pruning_months: Optional[str] = None # e.g. "3,10"
     raw_data: Optional[dict] = Field(default=None, sa_type=JSON) # Store all Trefle data
-    
+
     garden_id: int = Field(foreign_key="garden.id")
     garden: Garden = Relationship(back_populates="plants")
     tasks: List["Task"] = Relationship(back_populates="plant", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+    photos: List["PlantPhoto"] = Relationship(back_populates="plant", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
+
+class PlantPhoto(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    plant_id: int = Field(foreign_key="plant.id")
+    file_path: str
+    taken_at: datetime = Field(default_factory=datetime.utcnow)
+    ai_analysis: Optional[str] = None  # JSON string with health feedback
+    notes: Optional[str] = None
+
+    plant: Optional[Plant] = Relationship(back_populates="photos")
 
 class Task(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

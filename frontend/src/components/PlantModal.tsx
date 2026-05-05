@@ -55,10 +55,12 @@ export default function PlantModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState<TreflePlant[]>([]);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const identifyInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (plant) {
@@ -110,6 +112,46 @@ export default function PlantModal({
       image_url: p.image_url,
     });
     setShowSearchResults(false);
+  };
+
+  const identifyFromPhoto = async (file: File) => {
+    setIsIdentifying(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const response = await fetch(
+        `${API_URL}/plants/identify/?locale=${locale}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}` },
+          body: formData,
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const cleanMonths = (val: any) => {
+          if (!val) return "";
+          if (Array.isArray(val)) return val.join(",");
+          return String(val).replace(/[\[\]{}]/g, "");
+        };
+        setFormData((prev) => ({
+          ...prev,
+          common_name: data.common_name || prev.common_name,
+          scientific_name: data.scientific_name || prev.scientific_name,
+          flowering_months: cleanMonths(data.flowering_months) || prev.flowering_months,
+          pruning_months: cleanMonths(data.pruning_months) || prev.pruning_months,
+          remarks: data.remarks || prev.remarks,
+        }));
+        // Preview the uploaded photo
+        setSelectedFile(file);
+      } else {
+        const err = await response.json();
+        console.error("Identify error:", err.detail);
+      }
+    } catch (error) {
+      console.error("Error identifying plant:", error);
+    }
+    setIsIdentifying(false);
   };
 
   const getAiSuggestions = async () => {
@@ -169,6 +211,37 @@ export default function PlantModal({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Side: Form */}
         <div className="space-y-6">
+          {/* Identify from photo — shown when no name entered yet and AI is configured */}
+          {!isEditing && (userSettings?.openrouter_key || userSettings?.openai_key) && (
+            <>
+              <input
+                ref={identifyInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) identifyFromPhoto(file);
+                  e.target.value = "";
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => identifyInputRef.current?.click()}
+                disabled={isIdentifying}
+                className="w-full py-4 bg-secondary text-on-secondary rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-secondary/20 disabled:opacity-50"
+              >
+                {isIdentifying ? (
+                  <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                ) : (
+                  <span className="material-symbols-outlined">photo_camera</span>
+                )}
+                {isIdentifying ? t('photo.identifying') : t('photo.identifyFromPhoto')}
+              </button>
+            </>
+          )}
+
           {(formData.common_name || formData.scientific_name) && (userSettings?.openrouter_key || userSettings?.openai_key) && (
             <button
               type="button"
