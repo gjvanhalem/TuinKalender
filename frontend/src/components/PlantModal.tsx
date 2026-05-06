@@ -116,6 +116,8 @@ export default function PlantModal({
 
   const identifyFromPhoto = async (file: File) => {
     setIsIdentifying(true);
+    // Always store the file so it gets uploaded on save, regardless of AI success
+    setSelectedFile(file);
     const formData = new FormData();
     formData.append("file", file);
     try {
@@ -143,8 +145,6 @@ export default function PlantModal({
           remarks: data.remarks || prev.remarks,
           trefle_id: data.trefle_id || prev.trefle_id,
         }));
-        // Preview the uploaded photo
-        setSelectedFile(file);
       } else {
         const err = await response.json();
         console.error("Identify error:", err.detail);

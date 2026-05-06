@@ -119,7 +119,7 @@ export default function Navbar() {
 
       {/* BottomNavBar - Only show when logged in */}
       {session && isAuthorized && (
-        <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-surface/80 backdrop-blur-2xl z-50 rounded-t-lg md:rounded-t-xl shadow-[0_-4px_32px_rgba(21,30,22,0.06)] lg:max-w-md lg:left-1/2 lg:-translate-x-1/2 lg:mb-4 lg:rounded-full">
+        <nav className="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-safe pt-3 bg-surface/80 backdrop-blur-2xl z-50 rounded-t-lg md:rounded-t-xl shadow-[0_-4px_32px_rgba(21,30,22,0.06)] lg:max-w-md lg:left-1/2 lg:-translate-x-1/2 lg:mb-4 lg:rounded-full">
           <Link 
             href="/" 
             className={`flex flex-col items-center justify-center rounded-full transition-all p-2 ${pathname === '/' ? 'text-primary opacity-100 bg-primary/10' : 'text-on-surface opacity-60 hover:opacity-100 hover:bg-surface-container-low'}`}

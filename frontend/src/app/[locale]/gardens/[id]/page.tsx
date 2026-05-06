@@ -327,8 +327,9 @@ export default function GardenPlantsPage() {
         headers: { Authorization: `Bearer ${session?.accessToken}` },
         body: formData,
       });
-      if (response.ok) {
-        fetchPlants();
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({ detail: response.statusText }));
+        console.error(`Image upload failed (${response.status}):`, errorBody);
       }
     } catch (error) {
       console.error("Error uploading image:", error);

@@ -15,9 +15,19 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Plan-te",
-  description: "Jouw persoonlijke Plan-te",
+  description: "Jouw persoonlijke tuinplanner",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Plan-te",
+  },
   icons: {
     icon: '/icon.svg',
+    apple: '/icons/apple-touch-icon.png',
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 
@@ -42,6 +52,8 @@ export default async function LocaleLayout({
   return (
     <html lang={locale}>
       <head>
+        <meta name="theme-color" content="#1f6d00" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" />
       </head>
       <body className={`${inter.className} antialiased`}>

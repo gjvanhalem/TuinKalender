@@ -5,6 +5,13 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  /* Safe area padding for PWA standalone mode on notched phones */
+  .pb-safe {
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+  }
+}
+
 .material-symbols-outlined {
   font-family: 'Material Symbols Outlined';
   font-weight: normal;

@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node scripts/generate-icons.js)",
+      "Bash(node -e \"require\\('C:/Users/gjvan/Projects/TuinKalender/frontend/node_modules/sharp'\\)\")",
+      "Bash(npm run *)",
+      "Bash(exist .next rmdir /s /q .next)"
+    ]
+  }
+}

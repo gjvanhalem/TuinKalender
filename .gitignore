@@ -23,6 +23,12 @@ node_modules/
 out/
 build/
 
+# PWA (generated at build time, not committed)
+frontend/public/sw.js
+frontend/public/sw.js.map
+frontend/public/workbox-*.js
+frontend/public/workbox-*.js.map
+
 # OS Files
 .DS_Store
 Thumbs.db
