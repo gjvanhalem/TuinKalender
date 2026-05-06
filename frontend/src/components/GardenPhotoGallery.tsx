@@ -219,7 +219,7 @@ export default function GardenPhotoGallery({
                 }`}
               >
                 <img
-                  src={`${API_URL}/${photo.file_path}`}
+                  src={photo.file_path.startsWith('http') ? photo.file_path : `${API_URL}/${photo.file_path.replace(/^\/+/, '')}`}
                   alt={formatDate(photo.taken_at)}
                   className="w-full h-full object-cover"
                 />

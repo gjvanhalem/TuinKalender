@@ -92,7 +92,11 @@ export default function PlantInfoModal({
           <div className="w-full md:w-1/2">
             <div className="aspect-square rounded-2xl overflow-hidden bg-surface-container-low shadow-inner border border-outline-variant/10">
               {plant.image_path ? (
-                <img src={`${API_URL}/${plant.image_path}`} alt={plant.common_name} className="w-full h-full object-cover" />
+                <img 
+                  src={plant.image_path.startsWith('http') ? plant.image_path : `${API_URL}/${plant.image_path.replace(/^\/+/, '')}`} 
+                  alt={plant.common_name} 
+                  className="w-full h-full object-cover" 
+                />
               ) : plant.image_url ? (
                 <img src={plant.image_url} alt={plant.common_name} className="w-full h-full object-cover" />
               ) : (

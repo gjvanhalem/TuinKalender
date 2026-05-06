@@ -141,6 +141,7 @@ export default function PlantModal({
           flowering_months: cleanMonths(data.flowering_months) || prev.flowering_months,
           pruning_months: cleanMonths(data.pruning_months) || prev.pruning_months,
           remarks: data.remarks || prev.remarks,
+          trefle_id: data.trefle_id || prev.trefle_id,
         }));
         // Preview the uploaded photo
         setSelectedFile(file);

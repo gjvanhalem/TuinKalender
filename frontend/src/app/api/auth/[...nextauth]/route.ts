@@ -14,19 +14,30 @@ const authOptions: NextAuthOptions = {
       if (!user.email) return false;
       
       const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      try {
-        const response = await fetch(`${apiUrl}/auth/check-invite?email=${user.email}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.allowed) {
-            return true;
+      
+      // Simple retry logic for internal communication
+      let attempts = 0;
+      const maxAttempts = 3;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const response = await fetch(`${apiUrl}/auth/check-invite?email=${user.email}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.allowed) {
+              return true;
+            }
           }
+          return "/?error=unauthorized";
+        } catch (error) {
+          attempts++;
+          console.error(`Sign in check attempt ${attempts} failed:`, error);
+          if (attempts >= maxAttempts) return false;
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        return "/?error=unauthorized";
-      } catch (error) {
-        console.error("Sign in check failed:", error);
-        return false;
       }
+      return false;
     },
     async jwt({ token, account }) {
       if (account) {
@@ -35,16 +46,26 @@ const authOptions: NextAuthOptions = {
 
       // Check invite status on every token update/refresh
       const apiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      try {
-        const response = await fetch(`${apiUrl}/auth/check-invite?email=${token.email}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (!data.allowed) {
-            token.error = "Unauthorized";
+      
+      let attempts = 0;
+      const maxAttempts = 2;
+      
+      while (attempts < maxAttempts) {
+        try {
+          const response = await fetch(`${apiUrl}/auth/check-invite?email=${token.email}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (!data.allowed) {
+              token.error = "Unauthorized";
+            }
           }
+          break; // Success or handled
+        } catch (error) {
+          attempts++;
+          console.error(`Invite check in JWT attempt ${attempts} failed:`, error);
+          if (attempts >= maxAttempts) break;
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-      } catch (error) {
-        console.error("Invite check in JWT failed:", error);
       }
 
       return token;

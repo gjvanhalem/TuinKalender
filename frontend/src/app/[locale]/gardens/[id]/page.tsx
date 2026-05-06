@@ -569,7 +569,7 @@ export default function GardenPlantsPage() {
                   {plant.image_path || plant.image_url ? (
                     <img 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                      src={plant.image_path ? `${API_URL}/${plant.image_path}` : plant.image_url} 
+                      src={plant.image_path ? (plant.image_path.startsWith('http') ? plant.image_path : `${API_URL}/${plant.image_path.replace(/^\/+/, '')}`) : plant.image_url} 
                       alt={plant.common_name} 
                     />
                   ) : (

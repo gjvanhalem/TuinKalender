@@ -22,6 +22,10 @@ from datetime import datetime, timedelta
 
 app = FastAPI(title="Plan-te API")
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 app.include_router(auth_check_router)
 
 app.add_middleware(
@@ -359,25 +363,6 @@ def unshare_garden(garden_id: int, user_id: int, current_user: User = Depends(ge
         
     return {"message": "Access revoked"}
 
-@app.put("/gardens/{garden_id}", response_model=Garden)
-def update_garden(garden_id: int, garden_data: Garden, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
-    db_garden = session.get(Garden, garden_id)
-    # Check ownership OR shared access for basic updates, but maybe only owner for settings?
-    # User said "zien en bewerken", so let's allow both.
-    has_shared_access = session.exec(select(GardenAccess).where(GardenAccess.garden_id == garden_id, GardenAccess.user_id == current_user.id)).first()
-    
-    if not db_garden or (db_garden.user_id != current_user.id and not has_shared_access):
-        raise HTTPException(status_code=404, detail="Garden not found or no access")
-        
-    garden_data_dict = garden_data.model_dump(exclude_unset=True)
-    for key, value in garden_data_dict.items():
-        if key not in ["user_id", "id"]:
-            setattr(db_garden, key, value)
-    session.add(db_garden)
-    session.commit()
-    session.refresh(db_garden)
-    return db_garden
-
 @app.delete("/gardens/{garden_id}")
 def delete_garden(garden_id: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     db_garden = session.get(Garden, garden_id)
@@ -475,6 +460,11 @@ def create_plant(plant: Plant, current_user: User = Depends(get_current_user), s
     if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=403, detail="Not authorized for this garden")
 
+    # Ensure plant is in the session and has an ID for potential image downloads
+    session.add(plant)
+    session.commit()
+    session.refresh(plant)
+
     if not current_user.trefle_token:
          # Continue but might not fetch data
          pass
@@ -492,17 +482,11 @@ def create_plant(plant: Plant, current_user: User = Depends(get_current_user), s
             if not plant.scientific_name:
                 plant.scientific_name = trefle_data.get("scientific_name")
 
-            session.add(plant)
-            session.commit()
-            session.refresh(plant)
-            
             # Download and save image if it exists
             if plant.image_url:
                 local_path = download_image(plant.image_url, plant.id)
                 if local_path:
                     plant.image_path = local_path
-                    session.add(plant)
-                    session.commit()
             
             # Suggest tasks from Trefle data
             suggested_tasks = extract_tasks_from_trefle_data(trefle_data)
@@ -523,14 +507,11 @@ def create_plant(plant: Plant, current_user: User = Depends(get_current_user), s
                     plant_id=plant.id
                 )
                 session.add(task)
+            session.add(plant)
             session.commit()
+            session.refresh(plant)
             return plant
     
-    # Manual creation or Trefle fetch failed
-    session.add(plant)
-    session.commit()
-    session.refresh(plant)
-
     # Sync manual months to Tasks for manual entries
     if plant.flowering_months:
         months = [m.strip() for m in plant.flowering_months.split(",")]
@@ -542,7 +523,9 @@ def create_plant(plant: Plant, current_user: User = Depends(get_current_user), s
         for m in months:
             if m.isdigit():
                 session.add(Task(month=int(m), category="Snoeien", description=f"Snoeien aanbevolen voor {plant.common_name}", plant_id=plant.id))
+    session.add(plant)
     session.commit()
+    session.refresh(plant)
             
     return plant
 
@@ -624,6 +607,9 @@ def get_accessible_garden_ids(user_id: int, session: Session) -> List[int]:
 def read_plants(garden_id: Optional[int] = None, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     accessible_ids = get_accessible_garden_ids(current_user.id, session)
     
+    # Ensure we get fresh data from the database
+    session.expire_all()
+    
     if garden_id:
         if garden_id not in accessible_ids:
             raise HTTPException(status_code=403, detail="No access to this garden")
@@ -690,6 +676,17 @@ async def identify_plant_photo(
     result = identify_plant_from_image(image_bytes, api_key, model, provider, locale)
     if not result:
         raise HTTPException(status_code=502, detail="AI could not identify the plant. Try a clearer photo.")
+    
+    # Try to find a matching Trefle ID for better task suggestions later
+    if current_user.trefle_token and result.get("scientific_name"):
+        trefle_results = search_plants(result["scientific_name"], current_user.trefle_token)
+        if trefle_results:
+            # Pick the first match
+            result["trefle_id"] = trefle_results[0].get("id")
+            # If AI didn't give us a common name but Trefle did, use it
+            if not result.get("common_name"):
+                result["common_name"] = trefle_results[0].get("common_name")
+
     return result
 
 
@@ -1107,7 +1104,12 @@ def delete_task(task_id: int, current_user: User = Depends(get_current_user), se
 
 # Image Upload
 @app.post("/plants/{plant_id}/image/")
-async def upload_plant_image(plant_id: int, file: UploadFile = File(...), current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+async def upload_plant_image(
+    plant_id: int, 
+    file: UploadFile = File(...), 
+    current_user: User = Depends(get_current_user), 
+    session: Session = Depends(get_session)
+):
     plant = session.get(Plant, plant_id)
     if not plant:
         raise HTTPException(status_code=404, detail="Plant not found")
@@ -1118,17 +1120,47 @@ async def upload_plant_image(plant_id: int, file: UploadFile = File(...), curren
     if not garden or (garden.user_id != current_user.id and not has_shared_access):
         raise HTTPException(status_code=403, detail="Not authorized")
         
-    os.makedirs("images", exist_ok=True)
-    # Sanitize filename to prevent path traversal
-    safe_filename = os.path.basename(file.filename or "photo.jpg")
+    # Ensure images directory exists with an absolute path check to be safe
+    abs_images_dir = os.path.join(os.getcwd(), "images")
+    os.makedirs(abs_images_dir, exist_ok=True)
+    
+    # Sanitize filename
+    safe_filename = os.path.basename(file.filename or "photo.jpg").replace(" ", "_")
     if not safe_filename:
         safe_filename = "photo.jpg"
-    file_path = f"images/{plant_id}_{safe_filename}"
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    
+    # Create a timestamped unique filename to avoid caching issues
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    file_path = f"images/{plant_id}_{timestamp}_{safe_filename}"
+    full_path = os.path.join(os.getcwd(), file_path)
+    
+    image_bytes = await file.read()
+    with open(full_path, "wb") as buffer:
+        buffer.write(image_bytes)
         
     plant.image_path = file_path
+
+    # NEW: Also add to the photo gallery (PlantPhoto) and run health analysis
+    # This ensures photos taken during identification show up in the timeline too
+    ai_analysis = None
+    try:
+        api_key, model, provider = _get_ai_config(current_user)
+        plant_name = plant.common_name or plant.scientific_name or "Unknown plant"
+        result = analyze_plant_health(image_bytes, plant_name, api_key, model, provider, current_user.preferred_language or "en")
+        if result:
+            ai_analysis = json.dumps(result)
+    except Exception as e:
+        print(f"Auto-analysis error during initial upload: {e}")
+
+    photo = PlantPhoto(
+        plant_id=plant_id,
+        file_path=file_path,
+        notes="Gevonden via identificatie" if current_user.preferred_language == "nl" else "Identified photo",
+        ai_analysis=ai_analysis,
+    )
+    session.add(photo)
+    
     session.add(plant)
     session.commit()
     session.refresh(plant)
-    return {"image_path": file_path}
+    return {"image_path": file_path, "photo_id": photo.id}
