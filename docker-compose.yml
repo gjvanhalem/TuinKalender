@@ -19,6 +19,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       DEFAULT_OPENROUTER_MODEL: ${DEFAULT_OPENROUTER_MODEL}
+      FRONTEND_URL: ${NEXTAUTH_URL:-http://localhost:3000}
     volumes:
       - plant_images:/app/images
     ports:
@@ -40,7 +41,7 @@ services:
         - NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
         - NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL=${NEXT_PUBLIC_DEFAULT_OPENROUTER_MODEL}
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       INTERNAL_API_URL: http://backend:8000

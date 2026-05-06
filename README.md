@@ -51,7 +51,7 @@ docker-compose up -d --build
 ```
 
 The application is now accessible at:
--   **Frontend**: `http://localhost:3000`
+-   **Frontend**: `http://localhost:3000` (or the port specified by `FRONTEND_PORT` in `.env`)
 -   **Backend API**: `http://localhost:8000` (Docs at `/docs`)
 
 ### 🛠️ Database Migrations (Alembic)

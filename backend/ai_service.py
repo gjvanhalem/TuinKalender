@@ -10,7 +10,7 @@ def _build_vision_headers(api_key: str, provider: str) -> dict:
     return {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "http://localhost:3000",
+        "HTTP-Referer": os.getenv("FRONTEND_URL", "http://localhost:3000"),
         "X-Title": "Plan-te",
     }
 
@@ -268,7 +268,7 @@ def get_plant_suggestions_ai(common_name: str, scientific_name: str, api_key: st
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000", 
+                "HTTP-Referer": os.getenv("FRONTEND_URL", "http://localhost:3000"), 
                 "X-Title": "Plan-te",
             }
 
@@ -347,7 +347,7 @@ def get_garden_advice_ai(plants_summary: str, weather_data: Dict, api_key: str, 
             headers = {
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "http://localhost:3000",
+                "HTTP-Referer": os.getenv("FRONTEND_URL", "http://localhost:3000"),
                 "X-Title": "Plan-te",
             }
 
