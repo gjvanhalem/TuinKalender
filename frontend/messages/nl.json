@@ -138,7 +138,13 @@
       "noGardenPhotos": "Nog geen tuinfoto's",
       "noGardenPhotosHint": "Maak regelmatig foto's om bij te houden hoe je tuin verandert.",
       "gardenNotesPlaceholder": "Optionele notitie (bijv. na lentebeurt, nieuwe planten toegevoegd)"
-    }
+    },
+    "dashboardOverview": "Tuin Overzicht",
+    "healthAlerts": "Gezondheid Alerts",
+    "gardenHealth": "Tuin Gezondheid",
+    "noAlerts": "Alles ziet er goed uit!",
+    "upcomingTasks": "Komende Taken",
+    "noTasks": "Geen taken voor deze maand."
   },
   "Admin": {
     "verifying": "Verifiëren...",

@@ -158,6 +158,127 @@ def update_user_me(user_data: dict, current_user: User = Depends(get_current_use
     session.refresh(db_user)
     return db_user
 
+# Dashboard Endpoint
+@app.get("/dashboard/summary")
+def get_dashboard_summary(garden_id: Optional[int] = None, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    # 1. Get user's gardens (owned and shared)
+    from sqlalchemy.orm import selectinload
+    owned_query = select(Garden).where(Garden.user_id == current_user.id)
+    owned_gardens = session.exec(owned_query).all()
+    
+    shared_query = select(Garden).join(GardenAccess).where(GardenAccess.user_id == current_user.id)
+    shared_gardens = session.exec(shared_query).all()
+    
+    all_gardens = list(owned_gardens) + [g for g in shared_gardens if g.id not in [og.id for og in owned_gardens]]
+    
+    if not all_gardens:
+        return {"has_gardens": False}
+
+    # Select the garden for the summary
+    primary_garden = None
+    if garden_id:
+        primary_garden = next((g for g in all_gardens if g.id == garden_id), None)
+    
+    if not primary_garden:
+        primary_garden = all_gardens[0]
+    
+    # Check if weather/advice needs update (once per day)
+    now = datetime.now()
+    if (not primary_garden.weather_forecast or not primary_garden.last_weather_update or primary_garden.last_weather_update.date() < now.date()):
+        update_garden_weather_and_advice(session, primary_garden)
+    
+    # 2. Get Weather & Advice for primary garden
+    weather = {
+        "forecast": primary_garden.weather_forecast,
+        "last_update": primary_garden.last_weather_update
+    }
+    advice = primary_garden.smart_advice
+
+    # 3. Garden Health (Latest Garden Photo)
+    latest_garden_photo = session.exec(
+        select(GardenPhoto)
+        .where(GardenPhoto.garden_id == primary_garden.id)
+        .order_by(GardenPhoto.taken_at.desc())
+    ).first()
+    
+    garden_health = None
+    if latest_garden_photo and latest_garden_photo.ai_analysis:
+        try:
+            garden_health = json.loads(latest_garden_photo.ai_analysis)
+        except:
+            garden_health = latest_garden_photo.ai_analysis
+
+    # 4. Plant Health Alerts (Latest photos for all plants in all gardens)
+    garden_ids = [g.id for g in all_gardens]
+    plant_alerts = []
+    
+    # Fetch plants for these gardens
+    plants = session.exec(select(Plant).where(Plant.garden_id.in_(garden_ids))).all()
+    
+    for plant in plants:
+        latest_photo = session.exec(
+            select(PlantPhoto)
+            .where(PlantPhoto.plant_id == plant.id)
+            .order_by(PlantPhoto.taken_at.desc())
+        ).first()
+        
+        if latest_photo and latest_photo.ai_analysis:
+            try:
+                analysis = json.loads(latest_photo.ai_analysis)
+                score = analysis.get("health_score")
+                status = analysis.get("status", "Healthy")
+                
+                # If health score is low or status indicates issues
+                is_unhealthy = False
+                if score is not None and score < 7:
+                    is_unhealthy = True
+                elif status and status.lower() not in ["healthy", "gezond", "ok"]:
+                    is_unhealthy = True
+                    
+                if is_unhealthy:
+                    plant_alerts.append({
+                        "plant_id": plant.id,
+                        "garden_id": plant.garden_id,
+                        "common_name": plant.common_name or plant.scientific_name,
+                        "health_score": score,
+                        "status": status,
+                        "diagnosis": analysis.get("diagnosis")
+                    })
+            except:
+                pass
+
+    # 5. Upcoming Tasks (Current Month)
+    current_month = now.month
+    tasks = session.exec(
+        select(Task)
+        .join(Plant)
+        .where(Plant.garden_id.in_(garden_ids))
+        .where(Task.month == current_month)
+        .where(Task.is_completed == False)
+    ).all()
+    
+    task_list = []
+    for t in tasks:
+        task_list.append({
+            "id": t.id,
+            "category": t.category,
+            "description": t.description,
+            "plant_name": t.plant.common_name or t.plant.scientific_name,
+            "garden_name": t.plant.garden.name,
+            "garden_id": t.plant.garden_id
+        })
+
+    return {
+        "has_gardens": True,
+        "garden_name": primary_garden.name,
+        "garden_id": primary_garden.id,
+        "weather": weather,
+        "advice": advice,
+        "garden_health": garden_health,
+        "plant_alerts": plant_alerts[:5],
+        "upcoming_tasks": task_list[:10]
+    }
+
 # Admin Endpoints
 @app.get("/admin/users", response_model=List[dict])
 def admin_get_users(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):

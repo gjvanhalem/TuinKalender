@@ -138,7 +138,13 @@
       "noGardenPhotos": "No garden photos yet",
       "noGardenPhotosHint": "Take regular photos to track how your garden changes over time.",
       "gardenNotesPlaceholder": "Optional note (e.g. after spring cleanup, new plants added)"
-    }
+    },
+    "dashboardOverview": "Garden Overview",
+    "healthAlerts": "Health Alerts",
+    "gardenHealth": "Garden Health",
+    "noAlerts": "Everything looks good!",
+    "upcomingTasks": "Upcoming Tasks",
+    "noTasks": "No tasks for this month."
   },
   "Admin": {
     "verifying": "Verifying...",

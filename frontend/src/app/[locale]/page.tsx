@@ -5,7 +5,7 @@ import { Leaf, Plus, Search, Calendar, Map, ArrowRight, LogIn } from 'lucide-rea
 import { Link } from '@/i18n/routing';
 import { useSession, signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import Logo from '@/components/Logo';
 import Modal from '@/components/Modal';
 
@@ -19,12 +19,32 @@ declare global {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+const categoryIcons: Record<string, string> = {
+  "Snoeien": "content_cut",
+  "Bloei": "filter_vintage",
+  "Planten": "sprout",
+  "Zaaien": "sprout",
+  "Oogsten": "eco",
+  "Water": "water_drop",
+  "Voeding": "Nutrition",
+  "Verpotten": "potted_plant",
+  "Notitie": "sticky_note_2",
+  "Taak": "checklist"
+};
+
 // Cache to prevent dashboard flashing
-let dashboardCache: { gardenCount: number; plantCount: number; userName?: string; gardens?: any[] } | null = null;
+let dashboardCache: { 
+  gardenCount: number; 
+  plantCount: number; 
+  userName?: string; 
+  gardens?: any[];
+  summary?: any;
+} | null = null;
 
 export default function Home() {
   const t = useTranslations('Common');
   const tHome = useTranslations('Home');
+  const locale = useLocale();
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
@@ -34,7 +54,9 @@ export default function Home() {
     plantCount: dashboardCache?.plantCount || 0 
   });
   const [gardens, setGardens] = useState<any[]>(dashboardCache?.gardens || []);
+  const [selectedDashboardGardenId, setSelectedDashboardGardenId] = useState<number | null>(null);
   const [userName, setUserName] = useState(dashboardCache?.userName || "");
+  const [summary, setSummary] = useState<any>(dashboardCache?.summary || null);
   const [rememberMe, setRememberMe] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newGardenName, setNewGardenName] = useState("");
@@ -59,6 +81,31 @@ export default function Home() {
       fetchUserData();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (session) {
+      fetchDashboardSummary(selectedDashboardGardenId);
+    }
+  }, [session, selectedDashboardGardenId]);
+
+  const fetchDashboardSummary = async (gardenId: number | null) => {
+    try {
+      const url = gardenId ? `${API_URL}/dashboard/summary?garden_id=${gardenId}` : `${API_URL}/dashboard/summary`;
+      const response = await fetch(url, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSummary(data);
+        if (dashboardCache) dashboardCache.summary = data;
+        if (!selectedDashboardGardenId && data.garden_id) {
+          setSelectedDashboardGardenId(data.garden_id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard summary:", error);
+    }
+  };
 
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<any>(null);
@@ -318,148 +365,254 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Feature Section / Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
-        <div className={`${session ? 'md:col-span-8' : 'md:col-span-12'} space-y-6`}>
-          {session && (
-            <div className="space-y-4 mb-8">
-              <div className="flex items-center justify-between px-2">
-                <h3 className="font-headline text-2xl font-bold">{t('myGardens')}</h3>
-                <button 
-                  onClick={() => setShowAddModal(true)}
-                  className="flex items-center gap-2 text-primary hover:bg-primary/5 px-4 py-2 rounded-full transition-colors font-semibold"
-                >
-                  <span className="material-symbols-outlined">add_circle</span>
-                  <span>{t('addGarden')}</span>
-                </button>
-              </div>
+      {/* Dashboard Summary Section */}
+      {session && summary?.has_gardens && (
+        <section className="mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <div className="flex items-center justify-between px-2 mb-6">
+            <h3 className="font-headline text-2xl font-bold">{t('dashboardOverview')}</h3>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={() => setShowAddModal(true)}
+                className="hidden sm:flex items-center gap-2 text-primary hover:bg-primary/5 px-4 py-2 rounded-full transition-colors font-semibold text-sm"
+              >
+                <span className="material-symbols-outlined text-lg">add_circle</span>
+                <span>{t('addGarden')}</span>
+              </button>
               
-              {gardens.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {gardens.map((garden) => (
-                    <Link 
-                      key={garden.id} 
-                      href={`/gardens/${garden.id}`}
-                      className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex items-center gap-4 border border-outline-variant/5"
-                    >
-                      <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                        <span className="material-symbols-outlined text-primary text-2xl">
-                          {garden.is_owner ? 'yard' : 'share'}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-headline text-lg font-bold text-on-surface truncate group-hover:text-primary transition-colors">
-                          {garden.name}
-                        </h4>
-                        <p className="text-on-surface-variant text-xs mt-0.5 truncate">
-                          {garden.plant_count} {t('plants').toLowerCase()}
-                        </p>
-                      </div>
-                      <span className="material-symbols-outlined text-outline ml-auto group-hover:translate-x-1 transition-transform">
-                        arrow_forward
-                      </span>
-                    </Link>
-                  ))}
+              {gardens.length > 1 ? (
+                <div className="relative">
+                  <select
+                    value={selectedDashboardGardenId || ""}
+                    onChange={(e) => setSelectedDashboardGardenId(Number(e.target.value))}
+                    className="appearance-none bg-surface-container-low text-on-surface-variant text-sm font-bold pl-10 pr-10 py-2 rounded-full border border-outline-variant/10 cursor-pointer hover:bg-surface-container-high transition-colors focus:ring-2 focus:ring-primary/20 outline-none"
+                  >
+                    {gardens.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-sm pointer-events-none">location_on</span>
+                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-variant text-sm pointer-events-none">unfold_more</span>
                 </div>
               ) : (
-                <div className="bg-surface-container-low rounded-2xl p-12 text-center border-2 border-dashed border-outline-variant/20">
-                  <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">yard</span>
-                  <p className="text-on-surface-variant font-medium mb-6">{t('noGardensYet')}</p>
-                  <button 
-                    onClick={() => setShowAddModal(true)}
-                    className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all active:scale-95"
-                  >
-                    {t('addFirstGarden')}
-                  </button>
+                <div className="flex items-center gap-2 text-on-surface-variant text-sm font-bold bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant/10">
+                  <span className="material-symbols-outlined text-sm text-primary">location_on</span>
+                  {summary.garden_name}
                 </div>
               )}
             </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Weather & Advice Card */}
+            <div className="bg-surface-container-low rounded-3xl border border-outline-variant/10 overflow-hidden flex flex-col shadow-sm hover:shadow-md transition-shadow">
+              <div className="p-6 flex-grow">
+                 <div className="flex items-center justify-between mb-4">
+                   <h4 className="font-headline text-lg font-bold flex items-center gap-2">
+                     <span className="material-symbols-outlined text-primary">cloud</span>
+                     {tHome('features.weatherData.title')}
+                   </h4>
+                   {summary.weather?.forecast?.list && (
+                      <div className="text-3xl font-bold text-on-surface">
+                        {Math.round(summary.weather.forecast.list[0].main.temp)}°C
+                      </div>
+                   )}
+                 </div>
+                 
+                 {summary.weather?.forecast?.list && (
+                   <div className="flex justify-between mb-6 bg-surface-container-high/30 rounded-2xl p-4">
+                      {summary.weather.forecast.list
+                        .filter((_: any, index: number) => index % 8 === 0)
+                        .slice(0, 5)
+                        .map((day: any, idx: number) => (
+                          <div key={idx} className="flex flex-col items-center">
+                            <span className="text-[10px] font-bold text-outline-variant uppercase tracking-tighter">
+                              {new Date(day.dt * 1000).toLocaleDateString(locale, { weekday: 'short' })}
+                            </span>
+                            <img 
+                              src={`https://openweathermap.org/img/wn/${day.weather[0].icon}.png`} 
+                              alt={day.weather[0].description} 
+                              className="w-10 h-10"
+                            />
+                            <span className="text-sm font-bold text-on-surface">{Math.round(day.main.temp)}°</span>
+                          </div>
+                        ))}
+                   </div>
+                 )}
+
+                 {summary.advice && (
+                   <div className="bg-secondary/5 rounded-2xl p-4 border border-secondary/10 relative overflow-hidden group/advice">
+                     <div className="absolute top-0 left-0 w-1 h-full bg-secondary opacity-20"></div>
+                     <div className="flex items-center gap-2 mb-2">
+                       <span className="material-symbols-outlined text-secondary text-sm animate-pulse">auto_awesome</span>
+                       <span className="text-[10px] font-bold uppercase tracking-wider text-secondary">{t('smartAdvice')}</span>
+                     </div>
+                     <p className="text-sm text-on-surface-variant italic leading-relaxed">
+                       "{summary.advice.length > 180 ? summary.advice.substring(0, 180) + '...' : summary.advice}"
+                     </p>
+                   </div>
+                 )}
+              </div>
+              <Link href={`/gardens/${summary.garden_id}`} className="bg-surface-container-high p-4 text-center text-sm font-bold text-primary hover:bg-primary hover:text-white transition-all">
+                {t('openGarden')}
+              </Link>
+            </div>
+
+            {/* Health & Tasks Column */}
+            <div className="flex flex-col gap-6">
+              {/* Tasks Card */}
+              <div className="bg-surface-container-low rounded-3xl border border-outline-variant/10 p-6 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-headline text-lg font-bold flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">checklist</span>
+                    {t('upcomingTasks')}
+                  </h4>
+                  <Link href="/calendar" className="text-xs font-bold text-primary hover:underline">
+                    {t('viewCalendar')}
+                  </Link>
+                </div>
+                
+                <div className="space-y-3">
+                  {summary.upcoming_tasks?.length > 0 ? (
+                    summary.upcoming_tasks.slice(0, 3).map((task: any) => (
+                      <div key={task.id} className="flex items-center gap-3 bg-surface-container-high/40 p-3 rounded-2xl border border-outline-variant/5 hover:border-primary/20 transition-colors">
+                        <div className="w-10 h-10 rounded-xl bg-primary-container/20 flex items-center justify-center shrink-0">
+                          <span className="material-symbols-outlined text-primary text-xl">
+                            {categoryIcons[task.category] || 'task_alt'}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-on-surface truncate">{task.description}</p>
+                          <p className="text-[10px] text-on-surface-variant font-medium">
+                            {task.plant_name} • {task.garden_name}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 bg-surface-container-high/20 rounded-2xl border border-dashed border-outline-variant/20">
+                      <p className="text-sm text-on-surface-variant italic">{t('noTasks')}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Health Status Card */}
+              <div className={`rounded-3xl border p-6 shadow-sm ${summary.plant_alerts?.length > 0 ? 'bg-error-container/5 border-error/10' : 'bg-surface-container-low border-outline-variant/10'}`}>
+                <h4 className={`font-headline text-lg font-bold mb-4 flex items-center gap-2 ${summary.plant_alerts?.length > 0 ? 'text-error' : 'text-on-surface'}`}>
+                  <span className="material-symbols-outlined">{summary.plant_alerts?.length > 0 ? 'warning' : 'health_and_safety'}</span>
+                  {summary.plant_alerts?.length > 0 ? t('healthAlerts') : t('gardenHealth')}
+                </h4>
+                
+                <div className="space-y-3">
+                  {summary.plant_alerts?.length > 0 ? (
+                    summary.plant_alerts.map((alert: any) => (
+                      <Link key={alert.plant_id} href={`/gardens/${alert.garden_id}`} className="flex items-center justify-between bg-white/40 p-3 rounded-2xl border border-error/5 hover:bg-white transition-all group">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">{alert.common_name}</p>
+                          <p className="text-[10px] text-error font-semibold uppercase tracking-tight">{alert.status}</p>
+                        </div>
+                        <div className={`text-[10px] font-black w-8 h-8 flex items-center justify-center rounded-full ${alert.health_score < 5 ? 'bg-error text-white' : 'bg-warning text-on-warning'}`}>
+                          {alert.health_score}
+                        </div>
+                      </Link>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-primary">check_circle</span>
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-on-surface">{t('noAlerts')}</p>
+                        <p className="text-xs text-on-surface-variant">{summary.garden_health?.overall_health || tHome('features.multipleGardens.description')}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Feature Section / Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
+        <div className="md:col-span-12 space-y-6">
+          {session && gardens.length === 0 && (
+            <div className="space-y-4 mb-8">
+              <div className="flex items-center justify-between px-2">
+                <h3 className="font-headline text-2xl font-bold">{t('myGardens')}</h3>
+              </div>
+              
+              <div className="bg-surface-container-low rounded-2xl p-12 text-center border-2 border-dashed border-outline-variant/20">
+                <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">yard</span>
+                <p className="text-on-surface-variant font-medium mb-6">{t('noGardensYet')}</p>
+                <button 
+                  onClick={() => setShowAddModal(true)}
+                  className="bg-primary text-white px-8 py-3 rounded-full font-bold hover:opacity-90 transition-all active:scale-95"
+                >
+                  {t('addFirstGarden')}
+                </button>
+              </div>
+            </div>
           )}
 
-          <div className="flex items-center justify-between px-2">
-            <h3 className="font-headline text-2xl font-bold">{tHome('whyAppName')}</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
-              <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-primary text-2xl">map</span>
+          {!session && (
+            <>
+              <div className="flex items-center justify-between px-2">
+                <h3 className="font-headline text-2xl font-bold">{tHome('whyAppName')}</h3>
               </div>
-              <div>
-                <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.multipleGardens.title')}</h4>
-                <p className="text-on-surface-variant text-sm mt-1">{tHome('features.multipleGardens.description')}</p>
-              </div>
-            </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-primary text-2xl">map</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.multipleGardens.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.multipleGardens.description')}</p>
+                  </div>
+                </div>
 
-            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
-              <div className="w-12 h-12 bg-secondary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-secondary text-2xl">cloud</span>
-              </div>
-              <div>
-                <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.weatherData.title')}</h4>
-                <p className="text-on-surface-variant text-sm mt-1">{tHome('features.weatherData.description')}</p>
-              </div>
-            </div>
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-secondary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-secondary text-2xl">cloud</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.weatherData.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.weatherData.description')}</p>
+                  </div>
+                </div>
 
-            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
-              <div className="w-12 h-12 bg-info-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-info text-2xl">auto_awesome</span>
-              </div>
-              <div>
-                <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.aiAdvice.title')}</h4>
-                <p className="text-on-surface-variant text-sm mt-1">{tHome('features.aiAdvice.description')}</p>
-              </div>
-            </div>
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-info-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-info text-2xl">auto_awesome</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.aiAdvice.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.aiAdvice.description')}</p>
+                  </div>
+                </div>
 
-            <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
-              <div className="w-12 h-12 bg-tertiary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                <span className="material-symbols-outlined text-tertiary text-2xl">checklist</span>
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-tertiary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-tertiary text-2xl">checklist</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.todoList.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.todoList.description')}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.todoList.title')}</h4>
-                <p className="text-on-surface-variant text-sm mt-1">{tHome('features.todoList.description')}</p>
-              </div>
-            </div>
-          </div>
 
-          <div className="pt-8 flex justify-center">
-            <div className="inline-flex items-center gap-3 bg-surface-container-high/50 px-6 py-2 rounded-full border border-outline-variant/10">
-              <div className="w-2 h-2 rounded-full bg-primary-container"></div>
-              <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Powered by Trefle.io</span>
-            </div>
-          </div>
+              <div className="pt-8 flex justify-center">
+                <div className="inline-flex items-center gap-3 bg-surface-container-high/50 px-6 py-2 rounded-full border border-outline-variant/10">
+                  <div className="w-2 h-2 rounded-full bg-primary-container"></div>
+                  <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">Powered by Trefle.io</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
-
-        {/* Sidebar / Stats Area */}
-        {session && (
-          <div className="md:col-span-4 space-y-6">
-            <div className="bg-surface-container-lowest rounded-lg p-6 editorial-shadow border border-outline-variant/5">
-              <h5 className="font-headline text-lg font-bold mb-4">{tHome('gardenStatus')}</h5>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-on-surface-variant">{tHome('activeGardens')}</span>
-                  <span className="text-sm font-bold text-primary">{stats.gardenCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-on-surface-variant">{tHome('totalPlants')}</span>
-                  <span className="text-sm font-bold text-secondary">{stats.plantCount}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-primary-container/10 rounded-lg p-6 relative overflow-hidden">
-              <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-primary/10 text-8xl">potted_plant</span>
-              <h5 className="font-headline text-lg font-bold text-on-primary-container mb-2">{tHome('tip')}</h5>
-              <p className="text-sm text-on-primary-container/80 leading-relaxed relative z-10">
-                {stats.gardenCount === 0 
-                  ? tHome('tips.noGardens')
-                  : stats.plantCount === 0
-                  ? tHome('tips.noPlants')
-                  : tHome('tips.regular')}
-              </p>
-            </div>
-          </div>
-        )}
       </div>
 
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title={t('addGarden')}>
