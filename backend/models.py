@@ -25,6 +25,7 @@ class User(SQLModel, table=True):
     ai_provider: str = Field(default="openrouter") # "openrouter" or "openai"
     preferred_language: str = Field(default="en")
     has_onboarded: bool = Field(default=False)
+    receive_weekly_summary: bool = Field(default=False)
     
     gardens: List["Garden"] = Relationship(back_populates="user", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
     shared_gardens: List["Garden"] = Relationship(back_populates="shared_users", link_model=GardenAccess)

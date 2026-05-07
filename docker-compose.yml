@@ -20,6 +20,9 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       DEFAULT_OPENROUTER_MODEL: ${DEFAULT_OPENROUTER_MODEL}
       FRONTEND_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      MAILTRAP_TOKEN: ${MAILTRAP_TOKEN}
+      MAILTRAP_SENDER_EMAIL: ${MAILTRAP_SENDER_EMAIL}
+      MAILTRAP_SENDER_NAME: ${MAILTRAP_SENDER_NAME:-Plan-te}
     volumes:
       - plant_images:/app/images
     ports:

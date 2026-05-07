@@ -26,6 +26,7 @@ export default function SettingsPage() {
   const [openweathermapKey, setOpenweatherMapKey] = useState("");
   const [aiProvider, setAiProvider] = useState("openrouter");
   const [hasOnboarded, setHasOnboarded] = useState(true);
+  const [receiveWeeklySummary, setReceiveWeeklySummary] = useState(false);
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
@@ -53,6 +54,7 @@ export default function SettingsPage() {
         setOpenweatherMapKey(data.openweathermap_key || "");
         setAiProvider(data.ai_provider || "openrouter");
         setHasOnboarded(data.has_onboarded ?? true);
+        setReceiveWeeklySummary(data.receive_weekly_summary ?? false);
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -82,6 +84,7 @@ export default function SettingsPage() {
           openweathermap_key: openweathermapKey,
           ai_provider: aiProvider,
           has_onboarded: hasOnboarded,
+          receive_weekly_summary: receiveWeeklySummary,
         }),
       });
 
@@ -196,6 +199,23 @@ export default function SettingsPage() {
                     value={session?.user?.email || ""}
                   />
                   <p className="text-[10px] text-outline px-1 mt-1">{tSettings('emailLinked')}</p>
+                </div>
+                <div className="pt-4 border-t border-outline-variant/10">
+                  <label className="flex items-center gap-3 cursor-pointer group">
+                    <div className="relative">
+                      <input
+                        type="checkbox"
+                        className="sr-only peer"
+                        checked={receiveWeeklySummary}
+                        onChange={(e) => setReceiveWeeklySummary(e.target.checked)}
+                      />
+                      <div className="w-11 h-6 bg-surface-container-high rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{tSettings('weeklySummary')}</span>
+                      <p className="text-xs text-outline">{tSettings('weeklySummaryHelp')}</p>
+                    </div>
+                  </label>
                 </div>
               </div>
             </div>

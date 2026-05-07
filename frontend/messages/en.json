@@ -214,6 +214,8 @@
     "profile": "Profile",
     "email": "Email",
     "emailLinked": "Email address is linked to your Google account.",
+    "weeklySummary": "Weekly Summary",
+    "weeklySummaryHelp": "Receive a weekly email with weather forecasts and AI advice for all your gardens.",
     "plantDatabase": "Plant Database (Trefle.io)",
     "apiToken": "API Token",
     "trefleHelp": "Required for searching plants. Get a free token at trefle.io.",

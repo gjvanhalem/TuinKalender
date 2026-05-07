@@ -201,6 +201,8 @@
     "profile": "Profil",
     "email": "E-mail",
     "emailLinked": "L'adresse e-mail est liée à votre compte Google.",
+    "weeklySummary": "Résumé Hebdomadaire",
+    "weeklySummaryHelp": "Recevez un e-mail hebdomadaire avec les prévisions météo et des conseils IA pour tous vos jardins.",
     "plantDatabase": "Base de données des plantes (Trefle.io)",
     "apiToken": "Jeton API",
     "trefleHelp": "Requis pour la recherche de plantes. Obtenez un jeton gratuit sur trefle.io.",

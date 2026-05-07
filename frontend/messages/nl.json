@@ -214,6 +214,8 @@
     "profile": "Profiel",
     "email": "E-mail",
     "emailLinked": "E-mailadres is gekoppeld aan uw Google-account.",
+    "weeklySummary": "Wekelijks Overzicht",
+    "weeklySummaryHelp": "Ontvang wekelijks een e-mail met weersvoorspellingen en AI-advies voor al uw tuinen.",
     "plantDatabase": "Plantendatabase (Trefle.io)",
     "apiToken": "API Token",
     "trefleHelp": "Verplicht voor het zoeken naar planten. Verkrijg een gratis token op trefle.io.",

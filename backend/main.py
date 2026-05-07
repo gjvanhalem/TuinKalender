@@ -12,6 +12,7 @@ from trefle_api import search_plants, get_plant_details, extract_tasks_from_tref
 from ai_service import get_plant_suggestions_ai, get_garden_advice_ai, identify_plant_from_image, analyze_plant_health, analyze_garden_photo
 from weather_service import get_weather_data, get_forecast_data
 from auth import get_current_user
+from email_service import send_invitation_email, send_garden_share_email, send_weekly_summary_email
 from auth_check import router as auth_check_router
 from fastapi.staticfiles import StaticFiles
 import shutil
@@ -152,11 +153,45 @@ def update_user_me(user_data: dict, current_user: User = Depends(get_current_use
     if "ai_provider" in user_data: db_user.ai_provider = user_data["ai_provider"]
     if "preferred_language" in user_data: db_user.preferred_language = user_data["preferred_language"]
     if "has_onboarded" in user_data: db_user.has_onboarded = user_data["has_onboarded"]
+    if "receive_weekly_summary" in user_data: db_user.receive_weekly_summary = user_data["receive_weekly_summary"]
     
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
     return db_user
+
+@app.post("/admin/send-weekly-summaries")
+def trigger_weekly_summaries(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    """
+    Manually trigger weekly summaries for all users who have it enabled.
+    In a real app, this would be a cron job.
+    """
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only for administrators")
+    
+    users = session.exec(select(User).where(User.receive_weekly_summary == True)).all()
+    count = 0
+    for user in users:
+        # Get all gardens for this user (owned and shared)
+        owned_gardens = session.exec(select(Garden).where(Garden.user_id == user.id)).all()
+        shared_gardens = session.exec(select(Garden).join(GardenAccess).where(GardenAccess.user_id == user.id)).all()
+        all_gardens = list(set(owned_gardens + shared_gardens))
+        
+        garden_summaries = []
+        for garden in all_gardens:
+            # We use the cached weather/advice from the DB
+            summary = {
+                "name": garden.name,
+                "weather": f"{garden.weather_forecast['list'][0]['main']['temp']}°C, {garden.weather_forecast['list'][0]['weather'][0]['description']}" if garden.weather_forecast else "No weather data",
+                "advice": garden.smart_advice or "No advice available yet."
+            }
+            garden_summaries.append(summary)
+        
+        if garden_summaries:
+            send_weekly_summary_email(user.email, user.name or user.email, garden_summaries, locale=user.preferred_language)
+            count += 1
+            
+    return {"message": f"Sent {count} weekly summaries."}
 
 # Dashboard Endpoint
 @app.get("/dashboard/summary")
@@ -315,6 +350,10 @@ def admin_invite_user(user_data: dict, current_user: User = Depends(get_current_
     new_user = User(email=email, is_active=True, is_admin=False)
     session.add(new_user)
     session.commit()
+    
+    # Send invitation email
+    send_invitation_email(email, locale=current_user.preferred_language)
+    
     return {"message": f"User {email} added to the access list."}
 
 @app.patch("/admin/users/{user_id}")
@@ -453,12 +492,18 @@ def share_garden(garden_id: int, share_data: dict, current_user: User = Depends(
         raise HTTPException(status_code=400, detail="Email is required")
     
     target_user = session.exec(select(User).where(User.email == email)).first()
+    is_new_user = False
     if not target_user:
+        is_new_user = True
         # Create a placeholder user so they can log in later
         target_user = User(email=email, is_active=True, is_admin=False)
         session.add(target_user)
         session.commit()
         session.refresh(target_user)
+        
+        # Send invitation email for new user
+        # We use the inviter's language as a guess
+        send_invitation_email(email, invited_by_name=current_user.name or current_user.email, garden_name=garden.name, locale=current_user.preferred_language)
     
     if target_user.id == current_user.id:
         raise HTTPException(status_code=400, detail="You cannot share the garden with yourself")
@@ -469,6 +514,12 @@ def share_garden(garden_id: int, share_data: dict, current_user: User = Depends(
         session.add(access)
         session.commit()
         
+        # Send email to existing user if they weren't just invited now (placeholder)
+        if not is_new_user:
+            send_garden_share_email(email, invited_by_name=current_user.name or current_user.email, garden_name=garden.name, locale=target_user.preferred_language)
+    
+    return {"message": f"Garden shared with {email}"}
+
     return {"message": f"Garden shared with {email}"}
 
 @app.delete("/gardens/{garden_id}/share/{user_id}")
