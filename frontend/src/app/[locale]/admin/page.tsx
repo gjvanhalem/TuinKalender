@@ -7,12 +7,25 @@ import { useTranslations } from "next-intl";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+interface AdminStats {
+  total_users: number;
+  total_gardens: number;
+  total_plants: number;
+  onboarded_users: number;
+  favorite_plants: { name: string; count: number }[];
+  top_users: { email: string; garden_count: number; plant_count: number }[];
+  avg_gardens_per_user: number;
+  avg_plants_per_garden: number;
+}
+
 export default function AdminPage() {
   const t = useTranslations('Common');
   const tAdmin = useTranslations('Admin');
   const { data: session, status } = useSession();
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users'>('dashboard');
   const [inviteEmail, setInviteEmail] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -35,6 +48,7 @@ export default function AdminPage() {
         const data = await response.json();
         if (data.is_admin) {
           setIsAdmin(true);
+          fetchStats();
           fetchUsers();
         } else {
           router.push("/gardens");
@@ -42,6 +56,20 @@ export default function AdminPage() {
       }
     } catch (error) {
       console.error("Error checking admin status:", error);
+    }
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/stats`, {
+        headers: { Authorization: `Bearer ${session?.accessToken}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error);
     }
   };
 
@@ -171,7 +199,92 @@ export default function AdminPage() {
         <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{tAdmin('title')}</h2>
       </section>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Tabs */}
+      <div className="flex gap-4 mb-8 border-b border-outline-variant/10">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'dashboard' ? 'text-primary' : 'text-outline hover:text-on-surface'}`}
+        >
+          {tAdmin('dashboard')}
+          {activeTab === 'dashboard' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+        </button>
+        <button
+          onClick={() => setActiveTab('users')}
+          className={`pb-4 px-2 font-bold transition-all relative ${activeTab === 'users' ? 'text-primary' : 'text-outline hover:text-on-surface'}`}
+        >
+          {tAdmin('users')}
+          {activeTab === 'users' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+        </button>
+      </div>
+
+      {activeTab === 'dashboard' ? (
+        <div className="space-y-8">
+           {/* Stats Cards */}
+           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10">
+                <div className="text-xs font-bold text-outline uppercase mb-1">{tAdmin('totalUsers')}</div>
+                <div className="text-3xl font-bold">{stats?.total_users || 0}</div>
+                <div className="text-[10px] text-outline mt-1">{stats?.onboarded_users || 0} {tAdmin('onboardedUsers')}</div>
+              </div>
+              <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10">
+                <div className="text-xs font-bold text-outline uppercase mb-1">{tAdmin('totalGardens')}</div>
+                <div className="text-3xl font-bold">{stats?.total_gardens || 0}</div>
+                <div className="text-[10px] text-outline mt-1">{stats?.avg_gardens_per_user || 0} {tAdmin('avgGardensPerUser')}</div>
+              </div>
+              <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10">
+                <div className="text-xs font-bold text-outline uppercase mb-1">{tAdmin('totalPlants')}</div>
+                <div className="text-3xl font-bold">{stats?.total_plants || 0}</div>
+                <div className="text-[10px] text-outline mt-1">{stats?.avg_plants_per_garden || 0} {tAdmin('avgPlantsPerGarden')}</div>
+              </div>
+              <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10">
+                <div className="text-xs font-bold text-outline uppercase mb-1">Onboarding</div>
+                <div className="text-3xl font-bold">
+                  {stats?.total_users ? Math.round((stats.onboarded_users / stats.total_users) * 100) : 0}%
+                </div>
+                <div className="text-[10px] text-outline mt-1">Completion rate</div>
+              </div>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Favorite Plants */}
+              <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 p-6 overflow-hidden">
+                <h4 className="font-headline text-xl font-bold mb-6">{tAdmin('favoritePlants')}</h4>
+                <div className="space-y-4">
+                  {stats?.favorite_plants?.map((plant, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">{i+1}</div>
+                        <span className="font-medium text-sm">{plant.name}</span>
+                      </div>
+                      <span className="text-xs font-bold text-outline">{plant.count} {t('plants')}</span>
+                    </div>
+                  ))}
+                  {(!stats?.favorite_plants || stats.favorite_plants.length === 0) && <p className="text-sm text-outline">No data yet</p>}
+                </div>
+              </div>
+
+              {/* Top Users */}
+              <div className="bg-surface-container-low rounded-2xl border border-outline-variant/10 p-6 overflow-hidden">
+                <h4 className="font-headline text-xl font-bold mb-6">{tAdmin('topUsers')}</h4>
+                <div className="space-y-4">
+                  {stats?.top_users?.map((user, i) => (
+                    <div key={i} className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">{user.email}</div>
+                        <div className="text-[10px] text-outline">{user.garden_count} {t('gardens')}, {user.plant_count} {t('plants')}</div>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-secondary/10 flex items-center justify-center text-secondary">
+                        <span className="material-symbols-outlined text-sm">stars</span>
+                      </div>
+                    </div>
+                  ))}
+                  {(!stats?.top_users || stats.top_users.length === 0) && <p className="text-sm text-outline">No data yet</p>}
+                </div>
+              </div>
+           </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* User Management */}
         <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between px-2">
@@ -187,6 +300,8 @@ export default function AdminPage() {
                 <thead>
                   <tr className="bg-surface-container-high/50 border-b border-outline-variant/10">
                     <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-outline">{tAdmin('user')}</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">{t('gardens')}</th>
+                    <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">{t('plants')}</th>
                     <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">{tAdmin('status')}</th>
                     <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-center text-outline">{tAdmin('admin')}</th>
                     <th className="p-4 text-[10px] font-bold uppercase tracking-widest text-right text-outline">{tAdmin('action')}</th>
@@ -205,6 +320,12 @@ export default function AdminPage() {
                             <div className="text-[10px] text-outline truncate">{user.email}</div>
                           </div>
                         </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-sm font-medium">{user.garden_count || 0}</span>
+                      </td>
+                      <td className="p-4 text-center">
+                        <span className="text-sm font-medium">{user.plant_count || 0}</span>
                       </td>
                       <td className="p-4 text-center">
                         <button onClick={() => toggleStatus(user)} className={`p-1.5 rounded-lg transition-all ${user.is_active ? 'bg-primary/10 text-primary' : 'bg-error/10 text-error'}`} title={user.is_active ? tAdmin("deactivate") : tAdmin("activate")}>
@@ -281,6 +402,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
-    </main>
+    )}
+  </main>
   );
 }

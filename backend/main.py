@@ -391,6 +391,50 @@ def admin_delete_user(user_id: int, current_user: User = Depends(get_current_use
     session.commit()
     return {"message": "User and all associated data deleted"}
 
+@app.get("/admin/stats")
+def get_admin_stats(current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only for administrators")
+    
+    total_users = session.exec(select(func.count(User.id))).one()
+    total_gardens = session.exec(select(func.count(Garden.id))).one()
+    total_plants = session.exec(select(func.count(Plant.id))).one()
+    onboarded_users = session.exec(select(func.count(User.id)).where(User.has_onboarded == True)).one()
+    
+    # Favorite plants (top 10 common names)
+    stmt = select(Plant.common_name, func.count(Plant.id).label("count")).group_by(Plant.common_name).order_by(func.count(Plant.id).desc()).limit(10)
+    fav_plants = session.exec(stmt).all()
+    # fav_plants is a list of tuples (name, count)
+    favorite_plants = [{"name": name, "count": count} for name, count in fav_plants if name]
+
+    # Top users by garden count
+    user_stats_stmt = select(
+        User.id, 
+        User.email, 
+        func.count(Garden.id).label("garden_count")
+    ).join(Garden, isouter=True).group_by(User.id, User.email).order_by(func.count(Garden.id).desc()).limit(5)
+    
+    top_users_data = session.exec(user_stats_stmt).all()
+    top_users = []
+    for u_id, u_email, g_count in top_users_data:
+        p_count = session.exec(select(func.count(Plant.id)).join(Garden).where(Garden.user_id == u_id)).one()
+        top_users.append({
+            "email": u_email,
+            "garden_count": g_count,
+            "plant_count": p_count
+        })
+
+    return {
+        "total_users": total_users,
+        "total_gardens": total_gardens,
+        "total_plants": total_plants,
+        "onboarded_users": onboarded_users,
+        "favorite_plants": favorite_plants,
+        "top_users": top_users,
+        "avg_gardens_per_user": round(total_gardens / total_users, 2) if total_users > 0 else 0,
+        "avg_plants_per_garden": round(total_plants / total_gardens, 2) if total_gardens > 0 else 0
+    }
+
 # Garden Endpoints
 @app.post("/gardens/", response_model=Garden)
 def create_garden(garden: Garden, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
