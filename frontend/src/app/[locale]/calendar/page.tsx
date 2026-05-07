@@ -354,14 +354,14 @@ export default function CalendarPage() {
   }
 
   return (
-    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
-      <section className="mb-12">
+    <main className="pt-20 md:pt-24 pb-32 px-4 md:px-6 max-w-5xl mx-auto">
+      <section className="mb-8 md:mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">Seizoensgids</span>
-            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{t('calendar')}</h2>
+            <span className="font-label text-xs md:text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-1 md:mb-2 block">Seizoensgids</span>
+            <h2 className="font-headline text-4xl md:text-6xl font-bold tracking-tight text-on-surface">{t('calendar')}</h2>
           </div>
-          <div className="flex bg-surface-container-high p-1 rounded-xl">
+          <div className="flex bg-surface-container-high p-1 rounded-xl self-start md:self-auto">
             <button 
               onClick={() => setViewMode('list')}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant'}`}
@@ -409,12 +409,12 @@ export default function CalendarPage() {
             </select>
           </div>
 
-          <div className={`flex-grow flex items-center justify-between bg-surface-container-low px-6 py-3 rounded-2xl border border-outline-variant/10 ${viewMode === 'table' ? 'opacity-30 pointer-events-none' : ''}`}>
+          <div className={`flex-grow w-full md:w-auto flex items-center justify-between bg-surface-container-low px-4 md:px-6 py-3 rounded-2xl border border-outline-variant/10 ${viewMode === 'table' ? 'opacity-30 pointer-events-none' : ''}`}>
             <button onClick={prevMonth} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-container-high text-on-surface-variant transition-all">
               <span className="material-symbols-outlined">chevron_left</span>
             </button>
             <div className="text-center flex flex-col items-center">
-              <span className="text-2xl font-bold text-on-surface leading-tight">{monthsList[currentMonth - 1]}</span>
+              <span className="text-xl md:text-2xl font-bold text-on-surface leading-tight">{monthsList[currentMonth - 1]}</span>
               <button 
                 onClick={jumpToToday}
                 className={`text-[10px] font-bold uppercase tracking-wider text-primary hover:text-primary-container transition-all ${currentMonth === new Date().getMonth() + 1 ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}

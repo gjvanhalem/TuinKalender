@@ -118,10 +118,10 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="pt-24 pb-32 px-6 max-w-2xl mx-auto">
-      <section className="mb-12">
-        <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{tSettings('account')}</span>
-        <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{tSettings('title')}</h2>
+    <main className="pt-20 md:pt-24 pb-32 px-4 md:px-6 max-w-2xl mx-auto">
+      <section className="mb-8 md:mb-12">
+        <span className="font-label text-xs md:text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-1 md:mb-2 block">{tSettings('account')}</span>
+        <h2 className="font-headline text-4xl md:text-6xl font-bold tracking-tight text-on-surface">{tSettings('title')}</h2>
       </section>
 
       <div className="space-y-8">

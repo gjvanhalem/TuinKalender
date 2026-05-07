@@ -370,24 +370,24 @@ export default function GardenPlantsPage() {
   }
 
   return (
-    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
+    <main className="pt-20 md:pt-24 pb-32 px-4 md:px-6 max-w-5xl mx-auto">
       {/* Hero Section */}
-      <section className="mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-          <div className="flex items-center gap-6">
+      <section className="mb-8 md:mb-12">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-8">
+          <div className="flex items-center gap-4 md:gap-6 min-w-0">
             {garden?.image_path && (
-              <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden border border-outline-variant/10 shrink-0 shadow-sm">
+              <div className="w-16 h-16 md:w-24 md:h-24 rounded-2xl overflow-hidden border border-outline-variant/10 shrink-0 shadow-sm">
                 <img src={`${API_URL}/${garden.image_path}`} alt={garden.name} className="w-full h-full object-cover" />
               </div>
             )}
-            <div>
-              <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{t('myGarden') || "Mijn Tuin"}</span>
-              <div className="flex items-center gap-4">
-                <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
+            <div className="min-w-0 flex-grow">
+              <span className="font-label text-xs md:text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-1 md:mb-2 block">{t('myGarden') || "Mijn Tuin"}</span>
+              <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                <h2 className="font-headline text-3xl sm:text-4xl md:text-6xl font-bold tracking-tight text-on-surface truncate">
                   {garden?.name || t('loading')}
                 </h2>
                 {allGardens.length > 1 && (
-                  <div className="relative">
+                  <div className="relative shrink-0">
                     <select
                       value={gardenId}
                       onChange={(e) => router.push(`/gardens/${e.target.value}`)}
@@ -401,21 +401,21 @@ export default function GardenPlantsPage() {
                   </div>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-4 mt-2">
+              <div className="flex flex-wrap items-center gap-3 md:gap-4 mt-1 md:mt-2">
                 {garden?.location && (
-                  <p className="text-on-surface-variant text-sm flex items-center gap-1 font-medium">
-                    <span className="material-symbols-outlined text-sm text-outline">location_on</span>
+                  <p className="text-on-surface-variant text-xs md:text-sm flex items-center gap-1 font-medium truncate">
+                    <span className="material-symbols-outlined text-xs md:text-sm text-outline">location_on</span>
                     {garden.location}
                   </p>
                 )}
               </div>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 md:gap-3 flex-wrap sm:flex-nowrap">
             {(userSettings?.openrouter_key || userSettings?.openai_key) && (
               <button
                 onClick={() => setIsGardenPhotoModalOpen(true)}
-                className="flex items-center justify-center w-14 h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-primary transition-all active:scale-95 shadow-sm"
+                className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-primary transition-all active:scale-95 shadow-sm shrink-0"
                 title={t('photo.analyzeGarden')}
               >
                 <span className="material-symbols-outlined">photo_camera</span>
@@ -424,7 +424,7 @@ export default function GardenPlantsPage() {
             {garden?.is_owner && (
               <button
                 onClick={() => setShowShareModal(true)}
-                className="flex items-center justify-center w-14 h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-secondary transition-all active:scale-95 shadow-sm"
+                className="flex items-center justify-center w-12 h-12 md:w-14 md:h-14 bg-surface-container-high text-on-surface-variant rounded-xl hover:text-secondary transition-all active:scale-95 shadow-sm shrink-0"
                 title={t('shareGarden')}
               >
                 <span className="material-symbols-outlined">share</span>
@@ -436,10 +436,10 @@ export default function GardenPlantsPage() {
                 setIsEditing(false);
                 setIsPlantModalOpen(true);
               }}
-              className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
+              className="flex items-center justify-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-4 md:px-8 py-3 md:py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 flex-grow sm:flex-grow-0"
             >
               <span className="material-symbols-outlined">add</span>
-              <span>{t('addPlant') || "Plant Toevoegen"}</span>
+              <span className="text-sm md:text-base">{t('addPlant') || "Plant Toevoegen"}</span>
             </button>
           </div>
         </div>

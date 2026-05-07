@@ -282,37 +282,37 @@ export default function Home() {
   };
 
   return (
-    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
+    <main className="pt-20 md:pt-24 pb-32 px-4 md:px-6 max-w-5xl mx-auto">
       {/* Hero Section */}
-      <section className="mb-12">
+      <section className="mb-8 md:mb-12">
         {error === 'unauthorized' && (
-          <div className="mb-8 p-4 bg-error-container text-on-error-container rounded-xl font-bold flex items-center justify-center gap-2 animate-bounce border border-error/20">
+          <div className="mb-6 md:mb-8 p-4 bg-error-container text-on-error-container rounded-xl font-bold flex items-center justify-center gap-2 animate-bounce border border-error/20 text-sm md:text-base">
             <span className="material-symbols-outlined">warning</span>
             {t('unauthorized')}
           </div>
         )}
 
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-          <div className="flex items-center gap-6">
-            {!session && <Logo size={80} className="hidden md:block" />}
-            <div>
-              <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">
+          <div className="flex items-center gap-4 md:gap-6">
+            {!session && <Logo size={60} className="hidden md:block shrink-0" />}
+            <div className="min-w-0">
+              <span className="font-label text-xs md:text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-1 md:mb-2 block truncate">
                 {session ? t('welcome', { name: userName }) : t('guestWelcome')}
               </span>
-              <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">
+              <h2 className="font-headline text-4xl md:text-6xl font-bold tracking-tight text-on-surface truncate">
                 {session ? t('dashboard') : t('appName')}
               </h2>
             </div>
           </div>
           {session ? (
             <div className="flex flex-col sm:flex-row gap-3">
-              <Link href="/calendar" className="flex items-center gap-2 bg-secondary-container text-on-secondary-container px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center">
+              <Link href="/calendar" className="flex items-center gap-2 bg-secondary-container text-on-secondary-container px-6 md:px-8 py-3 md:py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center text-sm md:text-base">
                 <span className="material-symbols-outlined">calendar_month</span>
                 <span>{t('viewCalendar')}</span>
               </Link>
               <Link 
                 href={gardens.length === 1 ? `/gardens/${gardens[0].id}` : "/gardens"} 
-                className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-8 py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center"
+                className="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container text-white px-6 md:px-8 py-3 md:py-4 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-center justify-center text-sm md:text-base"
               >
                 <span className="material-symbols-outlined">potted_plant</span>
                 <span>{t('viewGardens')}</span>
@@ -356,9 +356,9 @@ export default function Home() {
 
         {/* Search Area */}
         <div className="relative group">
-          <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
+          <span className="material-symbols-outlined absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input 
-            className="w-full bg-surface-container-high border-none rounded-xl py-5 pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-lg placeholder:text-outline transition-all" 
+            className="w-full bg-surface-container-high border-none rounded-xl py-4 md:py-5 pl-12 md:pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-base md:text-lg placeholder:text-outline transition-all" 
             placeholder={t('searchPlaceholder')} 
             type="text"
           />

@@ -334,19 +334,19 @@ export default function GardensPage() {
   }
 
   return (
-    <main className="pt-24 pb-32 px-6 max-w-5xl mx-auto">
-      <section className="mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+    <main className="pt-20 md:pt-24 pb-32 px-4 md:px-6 max-w-5xl mx-auto">
+      <section className="mb-8 md:mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 mb-8">
           <div>
-            <span className="font-label text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-2 block">{t('myCollection')}</span>
-            <h2 className="font-headline text-5xl md:text-6xl font-bold tracking-tight text-on-surface">{t('gardens')}</h2>
+            <span className="font-label text-xs md:text-sm text-primary font-semibold tracking-[0.2em] uppercase mb-1 md:mb-2 block">{t('myCollection')}</span>
+            <h2 className="font-headline text-4xl md:text-6xl font-bold tracking-tight text-on-surface">{t('gardens')}</h2>
           </div>
         </div>
 
         <div className="relative group">
-          <span className="material-symbols-outlined absolute left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
+          <span className="material-symbols-outlined absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-outline">search</span>
           <input 
-            className="w-full bg-surface-container-high border-none rounded-xl py-5 pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-lg placeholder:text-outline transition-all" 
+            className="w-full bg-surface-container-high border-none rounded-xl py-4 md:py-5 pl-12 md:pl-16 pr-6 focus:ring-2 focus:ring-primary/20 text-base md:text-lg placeholder:text-outline transition-all" 
             placeholder={t('searchGardensPlaceholder')} 
             type="text"
           />
@@ -379,12 +379,12 @@ export default function GardensPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             {gardens.map((garden) => (
-              <div key={garden.id} className="group bg-surface-container-low rounded-xl p-6 transition-all hover:bg-surface-container-high flex flex-col justify-between editorial-shadow border border-outline-variant/5">
-                <div className="flex gap-6 mb-4">
+              <div key={garden.id} className="group bg-surface-container-low rounded-xl p-4 md:p-6 transition-all hover:bg-surface-container-high flex flex-col justify-between editorial-shadow border border-outline-variant/5">
+                <div className="flex gap-4 md:gap-6 mb-4">
                   {/* Garden Image */}
-                  <div className="w-24 h-24 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 border border-outline-variant/10 relative">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden bg-surface-container-highest shrink-0 border border-outline-variant/10 relative">
                     {garden.image_path ? (
                       <img 
                         src={`${API_URL}/${garden.image_path}`} 
@@ -393,18 +393,18 @@ export default function GardensPage() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-outline">
-                        <span className="material-symbols-outlined text-3xl">map</span>
+                        <span className="material-symbols-outlined text-2xl md:text-3xl">map</span>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex-grow flex justify-between items-start">
-                    <Link href={`/gardens/${garden.id}`} className="flex-grow">
-                      <h4 className="font-headline text-2xl font-bold text-on-surface group-hover:text-primary transition-colors flex items-center gap-2">
-                        {garden.name}
-                        <span className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward_ios</span>
+                  <div className="flex-grow flex justify-between items-start min-w-0">
+                    <Link href={`/gardens/${garden.id}`} className="flex-grow min-w-0">
+                      <h4 className="font-headline text-xl md:text-2xl font-bold text-on-surface group-hover:text-primary transition-colors flex items-center gap-2">
+                        <span className="truncate">{garden.name}</span>
+                        <span className="material-symbols-outlined text-sm opacity-0 group-hover:opacity-100 transition-opacity shrink-0">arrow_forward_ios</span>
                       </h4>
-                      <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-1 font-medium">
+                      <p className="text-on-surface-variant text-sm flex items-center gap-1 mt-1 font-medium truncate">
                         <span className="material-symbols-outlined text-sm">location_on</span>
                         {garden.location || t('noLocation')}
                       </p>

@@ -71,17 +71,17 @@ export default function Navbar() {
   return (
     <>
       {/* TopAppBar */}
-      <header className="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl flex justify-between items-center px-6 py-4">
-        <Link href="/" className="flex items-center gap-3">
-          <Logo size={32} />
-          <h1 className="font-headline font-bold tracking-tight text-2xl text-primary">{t('appName')}</h1>
+      <header className="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl flex justify-between items-center px-4 md:px-6 py-3 md:py-4">
+        <Link href="/" className="flex items-center gap-2 md:gap-3 shrink-0">
+          <Logo size={28} />
+          <h1 className="font-headline font-bold tracking-tight text-xl md:text-2xl text-primary truncate max-w-[150px] sm:max-w-none">{t('appName')}</h1>
         </Link>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           {/* Language Switcher */}
           <select 
             value={locale}
             onChange={(e) => onLocaleChange(e.target.value)}
-            className="bg-surface-container-high text-on-surface-variant text-sm font-semibold cursor-pointer focus:outline-none hover:opacity-80 transition-opacity rounded-lg px-2 py-1 border border-outline-variant/20"
+            className="bg-surface-container-high text-on-surface-variant text-xs md:text-sm font-semibold cursor-pointer focus:outline-none hover:opacity-80 transition-opacity rounded-lg px-2 py-1 border border-outline-variant/20"
           >
             <option value="en" className="bg-surface text-on-surface">EN</option>
             <option value="nl" className="bg-surface text-on-surface">NL</option>
@@ -90,10 +90,10 @@ export default function Navbar() {
 
           {session && (
             <>
-              <Link href="/settings" className="material-symbols-outlined text-on-surface-variant hover:opacity-80 transition-opacity active:scale-95 duration-200">
+              <Link href="/settings" className="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all active:scale-95 duration-200">
                 settings
               </Link>
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-primary/10">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full overflow-hidden bg-surface-container-high ring-2 ring-primary/10 shrink-0">
                 <img 
                   alt="User profile" 
                   src={session.user?.image || "https://lh3.googleusercontent.com/a/default-user"} 
@@ -108,9 +108,9 @@ export default function Navbar() {
           {!session && (
             <button 
               onClick={() => signIn('google')}
-              className="flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95"
+              className="flex items-center gap-2 bg-primary text-white px-3 md:px-4 py-1.5 md:py-2 rounded-xl font-semibold hover:opacity-90 transition-all active:scale-95 text-sm md:text-base"
             >
-              <span className="material-symbols-outlined">login</span>
+              <span className="material-symbols-outlined text-xl md:text-2xl">login</span>
               <span className="hidden sm:inline">{t('login')}</span>
             </button>
           )}
