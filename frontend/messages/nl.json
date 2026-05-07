@@ -281,21 +281,29 @@
         "plants": "Planten"
     },
     "features": {
-      "multipleGardens": {
-        "title": "Meerdere Tuinen",
-        "description": "Organiseer je planten per locatie en deel toegang met anderen."
+      "aiInsights": {
+        "title": "AI-gestuurde Inzichten",
+        "description": "Detecteer automatisch bloei- en snoeiperiodes en krijg AI-gezondheidsanalyse voor je planten."
       },
-      "weatherData": {
-        "title": "Live Weer-data",
-        "description": "Real-time weersverwachting per tuin voor slimme planning."
+      "visualJournals": {
+        "title": "Visuele Tuindagboeken",
+        "description": "Upload foto's om de voortgang van je tuin bij te houden en een mooie geschiedenis op te bouwen."
       },
-      "aiAdvice": {
-        "title": "AI Tuinadvies",
-        "description": "Persoonlijk advies op basis van je planten en het huidige weer."
+      "collaboration": {
+        "title": "Samen Tuinieren",
+        "description": "Deel je tuinen met familie of vrienden om samen je groene ruimte te beheren."
       },
-      "todoList": {
-        "title": "Interactieve To-do",
-        "description": "Vink snoei- en planttaken af in je persoonlijke jaaroverzicht."
+      "weatherPlanning": {
+        "title": "Weerbewuste Planning",
+        "description": "Lokale weersverwachtingen en slimme waarschuwingen om je tuinwerk perfect te timen."
+      },
+      "smartCalendar": {
+        "title": "Slimme Kalender & Taken",
+        "description": "Een gepersonaliseerd jaaroverzicht met taken die automatisch gepland zijn voor jouw planten."
+      },
+      "plantDatabase": {
+        "title": "Globale Plantendatabase",
+        "description": "Geïntegreerd met Trefle.io voor toegang tot duizenden plantensoorten en wetenschappelijke data."
       }
     },
     "whyAppName": "Waarom Plan-te?",

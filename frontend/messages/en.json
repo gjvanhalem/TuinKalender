@@ -281,21 +281,29 @@
         "plants": "Plants"
     },
     "features": {
-      "multipleGardens": {
-        "title": "Multiple Gardens",
-        "description": "Organize your plants per location and share access with others."
+      "aiInsights": {
+        "title": "AI-Powered Insights",
+        "description": "Automatically detect bloom/pruning periods and get AI-powered health analysis for your plants."
       },
-      "weatherData": {
-        "title": "Live Weather Data",
-        "description": "Real-time weather forecast per garden for smart planning."
+      "visualJournals": {
+        "title": "Visual Garden Journals",
+        "description": "Upload photos to track your garden's progress and maintain a beautiful visual history."
       },
-      "aiAdvice": {
-        "title": "AI Garden Advice",
-        "description": "Personalized advice based on your plants and the current weather."
+      "collaboration": {
+        "title": "Collaborative Gardening",
+        "description": "Share your gardens with family or friends to manage your green space together."
       },
-      "todoList": {
-        "title": "Interactive To-do",
-        "description": "Check off pruning and planting tasks in your personal yearly overview."
+      "weatherPlanning": {
+        "title": "Weather-Aware Planning",
+        "description": "Localized weather forecasts and smart warnings to help you time your gardening perfectly."
+      },
+      "smartCalendar": {
+        "title": "Smart Calendar & Tasks",
+        "description": "A personalized yearly overview with tasks automatically scheduled for your specific collection."
+      },
+      "plantDatabase": {
+        "title": "Global Plant Database",
+        "description": "Integrated with Trefle.io for access to thousands of plant species and scientific data."
       }
     },
     "whyAppName": "Why Plan-te?",

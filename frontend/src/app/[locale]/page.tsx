@@ -562,44 +562,64 @@ export default function Home() {
                 <h3 className="font-headline text-2xl font-bold">{tHome('whyAppName')}</h3>
               </div>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
-                  <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-primary text-2xl">map</span>
-                  </div>
-                  <div>
-                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.multipleGardens.title')}</h4>
-                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.multipleGardens.description')}</p>
-                  </div>
-                </div>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
                   <div className="w-12 h-12 bg-secondary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-secondary text-2xl">cloud</span>
+                    <span className="material-symbols-outlined text-secondary text-2xl">auto_awesome</span>
                   </div>
                   <div>
-                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.weatherData.title')}</h4>
-                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.weatherData.description')}</p>
-                  </div>
-                </div>
-
-                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
-                  <div className="w-12 h-12 bg-info-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-info text-2xl">auto_awesome</span>
-                  </div>
-                  <div>
-                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.aiAdvice.title')}</h4>
-                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.aiAdvice.description')}</p>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.aiInsights.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.aiInsights.description')}</p>
                   </div>
                 </div>
 
                 <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
                   <div className="w-12 h-12 bg-tertiary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <span className="material-symbols-outlined text-tertiary text-2xl">checklist</span>
+                    <span className="material-symbols-outlined text-tertiary text-2xl">photo_library</span>
                   </div>
                   <div>
-                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.todoList.title')}</h4>
-                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.todoList.description')}</p>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.visualJournals.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.visualJournals.description')}</p>
+                  </div>
+                </div>
+
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-primary text-2xl">group</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.collaboration.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.collaboration.description')}</p>
+                  </div>
+                </div>
+
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-secondary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-secondary text-2xl">wb_sunny</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.weatherPlanning.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.weatherPlanning.description')}</p>
+                  </div>
+                </div>
+
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-primary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-primary text-2xl">calendar_month</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.smartCalendar.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.smartCalendar.description')}</p>
+                  </div>
+                </div>
+
+                <div className="group bg-surface-container-low rounded-2xl p-6 transition-all hover:bg-surface-container-high flex flex-col gap-4 border border-outline-variant/5">
+                  <div className="w-12 h-12 bg-tertiary-container/20 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-tertiary text-2xl">menu_book</span>
+                  </div>
+                  <div>
+                    <h4 className="font-headline text-lg font-bold text-on-surface">{tHome('features.plantDatabase.title')}</h4>
+                    <p className="text-on-surface-variant text-sm mt-1">{tHome('features.plantDatabase.description')}</p>
                   </div>
                 </div>
               </div>

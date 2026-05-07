@@ -268,21 +268,29 @@
         "plants": "Plantes"
     },
     "features": {
-      "multipleGardens": {
-        "title": "Plusieurs Jardins",
-        "description": "Organisez vos plantes par emplacement et partagez l'accès avec d'autres."
+      "aiInsights": {
+        "title": "Analyses par IA",
+        "description": "Détectez automatiquement les périodes de floraison/taille et obtenez des analyses de santé par IA."
       },
-      "weatherData": {
-        "title": "Données Météo en Direct",
-        "description": "Prévisions météo en temps réel par jardin pour une planification intelligente."
+      "visualJournals": {
+        "title": "Journaux Visuels",
+        "description": "Téléchargez des photos pour suivre les progrès de votre jardin et garder un historique."
       },
-      "aiAdvice": {
-        "title": "Conseils Jardin IA",
-        "description": "Conseils personnalisés basés sur vos plantes et la météo actuelle."
+      "collaboration": {
+        "title": "Jardinage Collaboratif",
+        "description": "Partagez vos jardins avec votre famille ou vos amis pour gérer votre espace ensemble."
       },
-      "todoList": {
-        "title": "To-do Interactive",
-        "description": "Cochez les tâches de taille et de plantation dans votre aperçu annuel personnel."
+      "weatherPlanning": {
+        "title": "Planning Météo",
+        "description": "Prévisions météo locales et alertes intelligentes pour planifier vos activités au bon moment."
+      },
+      "smartCalendar": {
+        "title": "Calendrier & Tâches",
+        "description": "Un aperçu annuel personnalisé avec des tâches programmées automatiquement pour vos plantes."
+      },
+      "plantDatabase": {
+        "title": "Base de Plantes Globale",
+        "description": "Intégré à Trefle.io pour accéder à des milliers d'espèces et de données scientifiques."
       }
     },
     "whyAppName": "Pourquoi Plan-te ?",

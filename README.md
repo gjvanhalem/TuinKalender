@@ -6,20 +6,20 @@ Plan-te is a modern, containerized web application that helps you manage your ga
 
 ## ✨ Features
 
--   **Multi-user Support**: Secure login with your Google account. Each user manages their own gardens and plants.
--   **Interactive Garden Management**: Create multiple gardens and set their location via an interactive Google Maps picker or your current GPS location.
--   **Trefle.io Integration**: Search the global Trefle database for official plant data, scientific names, and photos.
--   **AI Gardening Advice (OpenRouter/OpenAI)**: 
-    -   Automatically fill in flowering months, pruning months, and care tips for your plants.
-    -   Get dynamic, weather-aware garden advice based on your current plant collection and local forecast.
--   **Weather Integration**: Real-time weather data and 5-day forecasts via OpenWeatherMap to help you plan your gardening activities.
+-   **AI-Powered Plant Management**: 
+    -   **Fill with AI**: Automatically determine flowering months, pruning periods, and scientific names for any plant.
+    -   **Visual Health Analysis**: Upload photos of your plants or gardens to receive AI-powered feedback on health and maintenance.
+-   **Smart Personalized Advice**: Get dynamic, weather-aware garden advice based on your current plant collection and local forecast.
+-   **Visual Garden Journals**: Maintain a beautiful photo history of your gardens and plants to track growth over the seasons.
+-   **Collaborative Gardening**: Share your gardens with family, friends, or neighbors with granular access control (Owner/Editor).
+-   **Weather Integration**: Real-time weather data and 5-day localized forecasts via OpenWeatherMap to help you plan your activities.
+-   **Smart Calendar & Tasks**: 
+    -   **Personalized Timeline**: A monthly overview with icons for specific tasks (Pruning, Flowering, Planting).
+    -   **Yearly Overview**: A compact table view of your entire collection's schedule.
+    -   **Weekly Summaries**: Receive automated email updates with a summary of upcoming tasks and weather alerts.
+-   **Global Plant Database**: Search thousands of species via Trefle.io integration for official data and scientific details.
 -   **Multi-language Support**: Fully localized interface available in **English**, **Dutch**, and **French**.
--   **Flexible Views**: Switch between a visual **Gallery View** (grid) with large photos or a compact **Table View** for large collections.
--   **Smart Calendar**: 
-    -   Monthly overview with icons for specific tasks (Pruning, Flowering, Planting).
-    -   Interactive **Yearly Overview** (table) for all your plants at a glance.
-    -   Filter by specific gardens.
--   **Persistence**: All your data and uploaded photos are securely stored on your own server via Docker volumes.
+-   **Privacy & Control**: All your data and photos are stored on your own server via Docker volumes.
 
 ## 🚀 Quick Start
 
